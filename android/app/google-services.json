@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "381357504974",
+    "project_id": "diyetisyenapp4-7485",
+    "storage_bucket": "diyetisyenapp4-7485.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:381357504974:android:11857b6ae2d25764b3539f",
+        "android_client_info": {
+          "package_name": "com.example.diyetisyen_randevum"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCt3hiAfaojIb7Gmk-tPy_K3Uo468K0nDU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
