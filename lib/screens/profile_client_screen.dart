@@ -25,8 +25,6 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   void initState() {
     super.initState();
     _client = widget.user as Client;
-    _heightController.text = _client.height.toString();
-    _weightController.text = _client.weight.toString();
   }
 
   @override
@@ -38,7 +36,6 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
 
   Future<void> _updateClientData(String field, List<String> values) async {
     try {
-      
       await _firestore.collection('clients').doc(_client.uid).update({
         field: values,
       });
@@ -172,67 +169,87 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircleAvatar(
-                    radius: 40,
-                    child: Icon(Icons.person, size: 50),
-                  ),
-                  SizedBox(width: 10),
-                  Text('${_client.name}',
-                      //${user.name}',
-                      style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 10),
-                ],
-              ),
-              SizedBox(
-                height: 16,
-              ),
+      body: StreamBuilder<DocumentSnapshot>(
+          stream: _firestore.collection('clients').doc(_client.uid).snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            }
+            if (!snapshot.hasData || !snapshot.data!.exists) {
+              return Center(child: Text('No data available'));
+            }
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  InfoCard('Vücut Kitle İndeksi',
-                      '${_client.bmi.toStringAsFixed(2)}'),
-                  GestureDetector(
-                    onTap: () => _showMeasurementDialog(),
-                    child: InfoCard('Kilo', '${_client.weight} kg'),
-                  ),
-                  GestureDetector(
-                    onTap: () => _showMeasurementDialog(),
-                    child: InfoCard('Boy', '${_client.height} cm'),
-                  ),
-                ],
+            var clientData = snapshot.data!.data() as Map<String, dynamic>;
+            _client = AppUser.fromMap(clientData) as Client;
+            _heightController.text = _client.height.toString();
+            _weightController.text = _client.weight.toString();
+
+            //
+
+            return SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircleAvatar(
+                          radius: 40,
+                          child: Icon(Icons.person, size: 50),
+                        ),
+                        SizedBox(width: 10),
+                        Text('${_client.name}',
+                            //${user.name}',
+                            style: TextStyle(
+                                fontSize: 22, fontWeight: FontWeight.bold)),
+                        SizedBox(height: 10),
+                      ],
+                    ),
+                    SizedBox(
+                      height: 16,
+                    ),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        InfoCard('Vücut Kitle İndeksi',
+                            '${_client.bmi.toStringAsFixed(2)}'),
+                        GestureDetector(
+                          onTap: () => _showMeasurementDialog(),
+                          child: InfoCard('Kilo', '${_client.weight} kg'),
+                        ),
+                        GestureDetector(
+                          onTap: () => _showMeasurementDialog(),
+                          child: InfoCard('Boy', '${_client.height} cm'),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20),
+                    TagSection(
+                      context: context,
+                      title: 'Alerjiler',
+                      initialTags: _client.allergies,
+                      onTagsUpdated: (tags) =>
+                          _updateClientData('allergies', tags),
+                    ),
+                    TagSection(
+                      context: context,
+                      title: 'Hastalıklar',
+                      initialTags: _client.diseases,
+                      onTagsUpdated: (tags) =>
+                          _updateClientData('diseases', tags),
+                    ),
+                    SizedBox(height: 20),
+                    //_buildTabSection(),
+                    SizedBox(height: 20),
+                    BuildDietList(),
+                  ],
+                ),
               ),
-              SizedBox(height: 20),
-              TagSection(
-                context: context,
-                title: 'Alerjiler',
-                initialTags: _client.allergies,
-                onTagsUpdated: (tags) => _updateClientData('allergies', tags),
-              ),
-              TagSection(
-                context: context,
-                title: 'Hastalıklar',
-                initialTags: _client.diseases,
-                onTagsUpdated: (tags) => _updateClientData('diseases', tags),
-              ),
-              SizedBox(height: 20),
-              //_buildTabSection(),
-              SizedBox(height: 20),
-              BuildDietList(),
-            ],
-          ),
-        ),
-      ),
+            );
+          }),
     );
   }
 }
