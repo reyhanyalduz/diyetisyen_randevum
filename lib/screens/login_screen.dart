@@ -25,7 +25,7 @@ class _LoginPageState extends State<LoginPage> {
         if (user.userType == UserType.client) {
           Navigator.pushReplacementNamed(context, '/clientHome');
         } else {
-          Navigator.pushReplacementNamed(context, '/deneme');
+          Navigator.pushReplacementNamed(context, '/dietitianHome');
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

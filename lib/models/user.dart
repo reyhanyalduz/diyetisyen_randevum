@@ -1,7 +1,7 @@
 enum UserType { dietitian, client }
 
-abstract class AppUser {
-  final String uid; // Firebase UID
+class AppUser {
+  final String uid;
   final String name;
   final String email;
   final UserType userType;
@@ -13,12 +13,17 @@ abstract class AppUser {
     required this.userType,
   });
 
-  // Firestore'dan gelen veriyi User nesnesine çevirme
-  factory AppUser.fromMap(Map<String, dynamic> map) {
-    UserType userType =
-        map['userType'] == 'dietitian' ? UserType.dietitian : UserType.client;
+  Map<String, dynamic> toMap() {
+    return {
+      'uid': uid,
+      'name': name,
+      'email': email,
+      'userType': userType.toString(),
+    };
+  }
 
-    if (userType == UserType.client) {
+  factory AppUser.fromMap(Map<String, dynamic> map) {
+    if (map['userType'] == 'client') {
       return Client(
         uid: map['uid'],
         name: map['name'],
@@ -27,6 +32,7 @@ abstract class AppUser {
         weight: map['weight']?.toDouble() ?? 0.0,
         allergies: List<String>.from(map['allergies'] ?? []),
         diseases: List<String>.from(map['diseases'] ?? []),
+        dietitianUid: map['dietitianUid'],
       );
     } else {
       return Dietitian(
@@ -37,9 +43,6 @@ abstract class AppUser {
       );
     }
   }
-
-  // Firestore'a kaydetmek için Map'e çevirme
-  Map<String, dynamic> toMap();
 }
 
 class Client extends AppUser {
@@ -47,6 +50,7 @@ class Client extends AppUser {
   final double weight;
   final List<String> allergies;
   final List<String> diseases;
+  final String? dietitianUid;
 
   Client({
     required String uid,
@@ -56,6 +60,7 @@ class Client extends AppUser {
     required this.weight,
     this.allergies = const [],
     this.diseases = const [],
+    this.dietitianUid,
   }) : super(uid: uid, name: name, email: email, userType: UserType.client);
 
   double get bmi {
@@ -74,6 +79,7 @@ class Client extends AppUser {
       'weight': weight,
       'allergies': allergies,
       'diseases': diseases,
+      'dietitianUid': dietitianUid,
     };
   }
 

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/dietitian_service.dart';
 import '../widgets/diet_list_widget.dart';
 import '../widgets/info_card_widget.dart';
 import '../widgets/tag_section_widget.dart';
@@ -20,11 +21,66 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
+  final DietitianService _dietitianService = DietitianService();
+  Dietitian? _selectedDietitian;
 
   @override
   void initState() {
     super.initState();
     _client = widget.user as Client;
+    _loadSelectedDietitian();
+    _verifyClientDataConsistency();
+  }
+
+  Future<void> _loadSelectedDietitian() async {
+    try {
+      if (_client.dietitianUid != null) {
+        print('Attempting to load dietitian with ID: ${_client.dietitianUid}');
+        _selectedDietitian =
+            await _dietitianService.getDietitianById(_client.dietitianUid!);
+        print('Loaded dietitian: ${_selectedDietitian?.name ?? "Not found"}');
+        if (mounted) setState(() {});
+      } else {
+        print('No dietitianUid available to load');
+      }
+    } catch (e) {
+      print('Error loading dietitian: $e');
+      // If there's an error, set _selectedDietitian to null to avoid UI issues
+      if (mounted) {
+        setState(() {
+          _selectedDietitian = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _verifyClientDataConsistency() async {
+    try {
+      // Check client data in both collections
+      final clientDoc =
+          await _firestore.collection('clients').doc(_client.uid).get();
+      final userDoc =
+          await _firestore.collection('users').doc(_client.uid).get();
+
+      if (clientDoc.exists && userDoc.exists) {
+        final clientData = clientDoc.data() as Map<String, dynamic>;
+        final userData = userDoc.data() as Map<String, dynamic>;
+
+        print('Client collection dietitianUid: ${clientData['dietitianUid']}');
+        print('Users collection dietitianUid: ${userData['dietitianUid']}');
+
+        // If there's a mismatch, update the users collection to match clients
+        if (clientData['dietitianUid'] != userData['dietitianUid']) {
+          print('Fixing inconsistency between collections');
+          await _firestore
+              .collection('users')
+              .doc(_client.uid)
+              .update({'dietitianUid': clientData['dietitianUid']});
+        }
+      }
+    } catch (e) {
+      print('Error verifying client data consistency: $e');
+    }
   }
 
   @override
@@ -153,6 +209,89 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     );
   }
 
+  Future<void> _changeDietitian() async {
+    try {
+      // Mevcut diyetisyenlerin listesini al
+      final dietitians = await _firestore
+          .collection('users')
+          .where('userType', isEqualTo: 'dietitian')
+          .get();
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Diyetisyen Seç'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: dietitians.docs.length,
+              itemBuilder: (context, index) {
+                final dietitian =
+                    AppUser.fromMap(dietitians.docs[index].data()) as Dietitian;
+                return ListTile(
+                  title: Text(dietitian.name),
+                  subtitle: Text(dietitian.specialty),
+                  selected: dietitian.uid == _client.dietitianUid,
+                  onTap: () async {
+                    try {
+                      // Update Firebase in both collections
+                      await _firestore
+                          .collection('clients')
+                          .doc(_client.uid)
+                          .update({'dietitianUid': dietitian.uid});
+
+                      // Also update the users collection
+                      await _firestore
+                          .collection('users')
+                          .doc(_client.uid)
+                          .update({'dietitianUid': dietitian.uid});
+
+                      // Update local client object
+                      setState(() {
+                        _client = Client(
+                          uid: _client.uid,
+                          name: _client.name,
+                          email: _client.email,
+                          height: _client.height,
+                          weight: _client.weight,
+                          allergies: _client.allergies,
+                          diseases: _client.diseases,
+                          dietitianUid: dietitian.uid,
+                        );
+                        _selectedDietitian = dietitian;
+                      });
+
+                      // Show success message
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text('Diyetisyen başarıyla güncellendi')),
+                      );
+
+                      Navigator.pop(context);
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text('Diyetisyen güncellenemedi: $e')),
+                      );
+                      Navigator.pop(context);
+                    }
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Diyetisyen listesi yüklenemedi: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -180,11 +319,28 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
             }
 
             var clientData = snapshot.data!.data() as Map<String, dynamic>;
+
+            // Debug print to check if dietitianUid exists in Firebase data
+            print('Firebase client data: $clientData');
+            print('DietitianUid from Firebase: ${clientData['dietitianUid']}');
+
             _client = AppUser.fromMap(clientData) as Client;
             _heightController.text = _client.height.toString();
             _weightController.text = _client.weight.toString();
 
-            //
+            // Debug print to check if dietitianUid is properly loaded into the Client object
+            print('Client object dietitianUid: ${_client.dietitianUid}');
+
+            // Diyetisyen bilgisini güncelle
+            if (_client.dietitianUid != null &&
+                (_selectedDietitian?.uid != _client.dietitianUid)) {
+              print('Loading dietitian with ID: ${_client.dietitianUid}');
+              _loadSelectedDietitian();
+            } else if (_client.dietitianUid == null) {
+              print(
+                  'No dietitian selected, setting _selectedDietitian to null');
+              _selectedDietitian = null;
+            }
 
             return SingleChildScrollView(
               child: Padding(
@@ -201,7 +357,6 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                         ),
                         SizedBox(width: 10),
                         Text('${_client.name}',
-                            //${user.name}',
                             style: TextStyle(
                                 fontSize: 22, fontWeight: FontWeight.bold)),
                         SizedBox(height: 10),
@@ -240,6 +395,22 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                       initialTags: _client.diseases,
                       onTagsUpdated: (tags) =>
                           _updateClientData('diseases', tags),
+                    ),
+                    SizedBox(height: 20),
+                    ListTile(
+                      title: Text('Diyetisyen'),
+                      subtitle: _selectedDietitian != null
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(_selectedDietitian!.name),
+                                Text(_selectedDietitian!.specialty,
+                                    style: TextStyle(fontSize: 12)),
+                              ],
+                            )
+                          : Text('Diyetisyen seçilmedi'),
+                      trailing: Icon(Icons.edit),
+                      onTap: _changeDietitian,
                     ),
                     SizedBox(height: 20),
                     //_buildTabSection(),
