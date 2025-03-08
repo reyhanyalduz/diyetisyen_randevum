@@ -1,64 +1,87 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../models/appointment.dart';
 
 class AppointmentService {
-  List<Appointment> appointments = [];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final String _collection = 'appointments';
 
-  bool isTimeAvailable(DateTime dateTime) {
-    Duration appointmentDuration = Duration(minutes: 20);
-    DateTime endTime = dateTime.add(appointmentDuration);
+  // Randevu oluşturma
+  Future<void> bookAppointment(
+      DateTime dateTime, String clientId, String dietitianId) async {
+    try {
+      final appointment = Appointment(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        clientId: clientId,
+        dietitianId: dietitianId,
+        dateTime: dateTime,
+        status: 'pending',
+      );
 
-    DateTime startOfDay =
-        DateTime(dateTime.year, dateTime.month, dateTime.day, 10);
-    DateTime endOfDay =
-        DateTime(dateTime.year, dateTime.month, dateTime.day, 18);
-
-    DateTime lunchStart =
-        DateTime(dateTime.year, dateTime.month, dateTime.day, 12);
-    DateTime lunchEnd =
-        DateTime(dateTime.year, dateTime.month, dateTime.day, 13);
-
-    // Geçmiş tarihler kontrolü
-    DateTime now = DateTime.now();
-    DateTime today = DateTime(now.year, now.month, now.day);
-
-    if (dateTime.isBefore(today)) {
-      return false;
+      await _firestore
+          .collection(_collection)
+          .doc(appointment.id)
+          .set(appointment.toMap());
+    } catch (e) {
+      print('Error booking appointment: $e');
+      throw e;
     }
-
-    // Saat kontrolü
-    if (dateTime.isBefore(startOfDay) ||
-        endTime.isAfter(endOfDay) ||
-        (dateTime.isAfter(lunchStart) && dateTime.isBefore(lunchEnd))) {
-      return false;
-    }
-
-    // Çakışma kontrolü
-    for (var appointment in appointments) {
-      DateTime existingStart = appointment.dateTime;
-      DateTime existingEnd = existingStart.add(appointmentDuration);
-
-      if (!(endTime.isBefore(existingStart) || dateTime.isAfter(existingEnd))) {
-        return false;
-      }
-    }
-
-    return true;
   }
 
-  void bookAppointment(DateTime dateTime) {
-    DateTime now = DateTime.now();
-    DateTime today = DateTime(now.year, now.month, now.day);
+  // Belirli bir kullanıcının randevularını getirme
+  Stream<List<Appointment>> getUserAppointments(String userId) {
+    return _firestore
+        .collection(_collection)
+        .where('clientId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) =>
+                Appointment.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+            .toList());
+  }
 
-    if (dateTime.isBefore(today)) {
-      print('Geçmişteki günlere randevu alınamaz');
-      return;
-    }
+  // Randevu saatinin müsait olup olmadığını kontrol etme
+  Future<bool> isTimeAvailable(DateTime dateTime) async {
+    final snapshot = await _firestore
+        .collection(_collection)
+        .where('dateTime', isEqualTo: dateTime.toIso8601String())
+        .get();
 
-    if (isTimeAvailable(dateTime)) {
-      appointments.add(Appointment(dateTime));
-      print('Randevu alındı: $dateTime');
-    } else {
-      print('Bu zaman dilimi uygun değil');
+    return snapshot.docs.isEmpty;
+  }
+
+  // Randevu iptal etme
+  Future<void> cancelAppointment(String appointmentId) async {
+    try {
+      await _firestore.collection(_collection).doc(appointmentId).update({
+        'status': 'cancelled',
+      });
+    } catch (e) {
+      print('Error cancelling appointment: $e');
+      throw e;
     }
+  }
+
+  // Randevu onaylama (diyetisyen için)
+  Future<void> confirmAppointment(String appointmentId) async {
+    try {
+      await _firestore.collection(_collection).doc(appointmentId).update({
+        'status': 'confirmed',
+      });
+    } catch (e) {
+      print('Error confirming appointment: $e');
+      throw e;
+    }
+  }
+
+  Stream<List<Appointment>> getDietitianAppointments(String dietitianId) {
+    return _firestore
+        .collection('appointments')
+        .where('dietitianId', isEqualTo: dietitianId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) =>
+                Appointment.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+            .toList());
   }
 }

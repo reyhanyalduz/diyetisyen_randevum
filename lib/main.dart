@@ -1,11 +1,11 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
-
 import '../screens/profile_dietitian.dart';
 import 'firebase_options.dart';
 import 'models/user.dart';
 import 'screens/calendar_client_screen.dart';
+import 'screens/calendar_dietitian_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/profile_client_screen.dart';
 import 'screens/signup_screen.dart';
@@ -86,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
       } else {
         _pages = [
           DietitianProfileScreen(user: user),
-          CalendarScreen(currentUser: user),
+          DietitianAppointmentPage(currentUser: user),
         ];
       }
     });

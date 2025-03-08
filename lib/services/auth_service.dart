@@ -17,10 +17,16 @@ class AuthService {
       );
 
       String uid = userCredential.user!.uid;
-      AppUser newUser;
+      Map<String, dynamic> userBasicData = {
+        'uid': uid,
+        'email': email,
+        'name': name, //buraya name ekleyince sorun çözüldü
+        'userType': userType == UserType.client ? 'client' : 'dietitian',
+      };
+      print("Firestore'a kaydedilecek veri: $userBasicData");
 
       if (userType == UserType.client) {
-        newUser = Client(
+        Client newUser = Client(
           uid: uid,
           name: name,
           email: email,
@@ -29,15 +35,22 @@ class AuthService {
           allergies: [],
           diseases: [],
         );
+
         await _firestore.collection('clients').doc(uid).set(newUser.toMap());
       } else {
-        newUser = Dietitian(uid: uid, name: name, email: email, specialty: '');
+        Dietitian newUser =
+            Dietitian(uid: uid, name: name, email: email, specialty: '');
         await _firestore.collection('dietitians').doc(uid).set(newUser.toMap());
       }
 
-      await _firestore.collection('users').doc(uid).set(newUser.toMap());
+      // Users koleksiyonuna sadece temel bilgileri kaydet
+      await _firestore.collection('users').doc(uid).set(userBasicData);
+      if (userCredential.user == null) {
+        print("Kullanıcı oluşturulamadı, userCredential.user null döndü!");
+        return null;
+      }
 
-      return newUser;
+      return AppUser.fromMap(userBasicData); // Kullanıcı objesi döndür
     } catch (e) {
       print("Kayıt hatası: $e");
       return null;
@@ -47,29 +60,90 @@ class AuthService {
   // Kullanıcı giriş işlemi
   Future<AppUser?> signIn(String email, String password) async {
     try {
+      print("Giriş denemesi - Email: $email");
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
       String uid = userCredential.user!.uid;
-      // Önce client koleksiyonunda ara
-      DocumentSnapshot clientDoc =
-          await _firestore.collection('clients').doc(uid).get();
-      if (clientDoc.exists) {
-        return AppUser.fromMap(clientDoc.data() as Map<String, dynamic>);
+      print("Firebase Authentication başarılı - UID: $uid");
+
+      // Users koleksiyonundan kullanıcı tipini al
+      DocumentSnapshot userDoc =
+          await _firestore.collection('users').doc(uid).get();
+
+      // Eğer users koleksiyonunda kayıt yoksa, dietitians koleksiyonuna bakıp
+      // users koleksiyonuna kayıt oluşturalım
+      if (!userDoc.exists) {
+        print(
+            "Users koleksiyonunda kayıt bulunamadı, dietitians kontrol ediliyor...");
+        DocumentSnapshot dietitianDoc =
+            await _firestore.collection('dietitians').doc(uid).get();
+
+        if (dietitianDoc.exists) {
+          // Diyetisyen kaydı bulundu, users koleksiyonuna ekleyelim
+          Map<String, dynamic> userData = {
+            'uid': uid,
+            'email': email,
+            'userType': 'dietitian',
+            'name': dietitianDoc.get('name') ?? '',
+          };
+
+          await _firestore.collection('users').doc(uid).set(userData);
+          print("Users koleksiyonuna diyetisyen kaydı eklendi");
+
+          return Dietitian(
+            uid: uid,
+            email: email,
+            name: dietitianDoc.get('name') ?? '',
+            specialty: dietitianDoc.get('specialty') ?? '',
+          );
+        }
+
+        print("Diyetisyen kaydı da bulunamadı!");
+        return null;
       }
 
-      // Client değilse dietitian koleksiyonunda ara
-      DocumentSnapshot dietitianDoc =
-          await _firestore.collection('dietitians').doc(uid).get();
-      if (dietitianDoc.exists) {
-        return AppUser.fromMap(dietitianDoc.data() as Map<String, dynamic>);
+      // Normal akış devam eder...
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+      String userType = userData['userType'].toString();
+      print("Kullanıcı tipi: $userType");
+
+      if (userType == 'dietitian') {
+        DocumentSnapshot dietitianDoc =
+            await _firestore.collection('dietitians').doc(uid).get();
+        if (dietitianDoc.exists) {
+          return Dietitian(
+            uid: uid,
+            email: email,
+            name: dietitianDoc.get('name') ?? '',
+            specialty: dietitianDoc.get('specialty') ?? '',
+          );
+        }
+      } else if (userType == 'client') {
+        print("Danışan girişi tespit edildi");
+        DocumentSnapshot clientDoc =
+            await _firestore.collection('clients').doc(uid).get();
+        if (clientDoc.exists) {
+          Map<String, dynamic> clientData =
+              clientDoc.data() as Map<String, dynamic>;
+          return Client(
+            uid: uid,
+            email: email,
+            name: clientData['name'] ?? '',
+            height: clientData['height'] ?? 0,
+            weight: clientData['weight'] ?? 0.0,
+            allergies: List<String>.from(clientData['allergies'] ?? []),
+            diseases: List<String>.from(clientData['diseases'] ?? []),
+          );
+        }
       }
 
+      print("Kullanıcı verisi dönüştürülemedi!");
       return null;
     } catch (e) {
-      print("Giriş hatası: $e");
+      print("Giriş hatası detayı: $e");
       return null;
     }
   }
