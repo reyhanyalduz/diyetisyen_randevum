@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
 import '../models/appointment.dart';
 import '../models/user.dart';
 import '../services/appointment_service.dart';

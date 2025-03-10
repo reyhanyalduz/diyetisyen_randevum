@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import '../models/user.dart';
 
 class AuthService {
@@ -8,7 +9,8 @@ class AuthService {
 
   // Kullanıcı kayıt işlemi
   Future<AppUser?> signUp(String email, String password, UserType userType,
-      String name, int height, double weight) async {
+      String name, int height, double weight,
+      {String? dietitianUid}) async {
     try {
       UserCredential userCredential =
           await _auth.createUserWithEmailAndPassword(
@@ -34,6 +36,7 @@ class AuthService {
           weight: weight,
           allergies: [],
           diseases: [],
+          dietitianUid: dietitianUid,
         );
 
         await _firestore.collection('clients').doc(uid).set(newUser.toMap());
@@ -136,6 +139,7 @@ class AuthService {
             weight: clientData['weight'] ?? 0.0,
             allergies: List<String>.from(clientData['allergies'] ?? []),
             diseases: List<String>.from(clientData['diseases'] ?? []),
+            dietitianUid: clientData['dietitianUid'],
           );
         }
       }
@@ -160,7 +164,41 @@ class AuthService {
       DocumentSnapshot userDoc =
           await _firestore.collection('users').doc(firebaseUser.uid).get();
       if (userDoc.exists) {
-        return AppUser.fromMap(userDoc.data() as Map<String, dynamic>);
+        String userType = userDoc.get('userType').toString();
+
+        if (userType == 'dietitian') {
+          DocumentSnapshot dietitianDoc = await _firestore
+              .collection('dietitians')
+              .doc(firebaseUser.uid)
+              .get();
+          if (dietitianDoc.exists) {
+            return Dietitian(
+              uid: firebaseUser.uid,
+              email: firebaseUser.email ?? '',
+              name: dietitianDoc.get('name') ?? '',
+              specialty: dietitianDoc.get('specialty') ?? '',
+            );
+          }
+        } else if (userType == 'client') {
+          DocumentSnapshot clientDoc = await _firestore
+              .collection('clients')
+              .doc(firebaseUser.uid)
+              .get();
+          if (clientDoc.exists) {
+            Map<String, dynamic> clientData =
+                clientDoc.data() as Map<String, dynamic>;
+            return Client(
+              uid: firebaseUser.uid,
+              email: firebaseUser.email ?? '',
+              name: clientData['name'] ?? '',
+              height: clientData['height'] ?? 0,
+              weight: clientData['weight'] ?? 0.0,
+              allergies: List<String>.from(clientData['allergies'] ?? []),
+              diseases: List<String>.from(clientData['diseases'] ?? []),
+              dietitianUid: clientData['dietitianUid'],
+            );
+          }
+        }
       }
     }
     return null;
