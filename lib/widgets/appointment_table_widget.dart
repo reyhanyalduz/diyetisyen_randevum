@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/appointment.dart';
 import '../services/appointment_service.dart';
 import '../utils/constants.dart';
+import '../services/client_service.dart';
+import '../models/user.dart';
 
 class AppointmentTable extends StatelessWidget {
   final List<Appointment> appointments;
@@ -19,6 +21,8 @@ class AppointmentTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appointmentService = AppointmentService();
+    final clientService = ClientService();
+    final Map<String, String> _clientNameCache = {};
 
     return ListView.builder(
       itemCount: 9,
@@ -53,88 +57,104 @@ class AppointmentTable extends StatelessWidget {
 
             // O saat aralığına ait randevular
             ...matchingAppointments.map((appointment) {
-              return Container(
-                margin: EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _getStatusColor(appointment.status),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              return FutureBuilder<String>(
+                  future: _getClientName(
+                      appointment.clientId, clientService, _clientNameCache),
+                  builder: (context, snapshot) {
+                    final clientName =
+                        snapshot.connectionState == ConnectionState.done
+                            ? snapshot.data ?? 'Yükleniyor...'
+                            : 'Yükleniyor...';
+
+                    return Container(
+                      margin: EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(appointment.status),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
                         children: [
-                          Text(
-                            "${appointment.dateTime.hour}:${appointment.dateTime.minute.toString().padLeft(2, '0')}",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "${appointment.dateTime.hour}:${appointment.dateTime.minute.toString().padLeft(2, '0')}",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  "Durum: ${_getStatusText(appointment.status)}",
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                                Text(
+                                  "Danışan: $clientName",
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                              ],
                             ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            "Durum: ${_getStatusText(appointment.status)}",
-                            style: TextStyle(fontSize: 14),
                           ),
                           if (isDietitian)
-                            Text(
-                              "Hasta ID: ${appointment.clientId}",
-                              style: TextStyle(fontSize: 14),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (appointment.status == 'pending')
+                                  IconButton(
+                                    icon:
+                                        Icon(Icons.check, color: Colors.green),
+                                    onPressed: () async {
+                                      try {
+                                        await appointmentService
+                                            .confirmAppointment(appointment.id);
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content:
+                                                  Text('Randevu onaylandı')),
+                                        );
+                                      } catch (e) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  'Randevu onaylanırken bir hata oluştu')),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                if (appointment.status != 'cancelled')
+                                  IconButton(
+                                    icon: Icon(Icons.cancel, color: Colors.red),
+                                    onPressed: () async {
+                                      try {
+                                        await appointmentService
+                                            .cancelAppointment(appointment.id);
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content:
+                                                  Text('Randevu iptal edildi')),
+                                        );
+                                      } catch (e) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  'Randevu iptal edilirken bir hata oluştu')),
+                                        );
+                                      }
+                                    },
+                                  ),
+                              ],
                             ),
                         ],
                       ),
-                    ),
-                    if (isDietitian)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (appointment.status == 'pending')
-                            IconButton(
-                              icon: Icon(Icons.check, color: Colors.green),
-                              onPressed: () async {
-                                try {
-                                  await appointmentService
-                                      .confirmAppointment(appointment.id);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: Text('Randevu onaylandı')),
-                                  );
-                                } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: Text(
-                                            'Randevu onaylanırken bir hata oluştu')),
-                                  );
-                                }
-                              },
-                            ),
-                          if (appointment.status != 'cancelled')
-                            IconButton(
-                              icon: Icon(Icons.cancel, color: Colors.red),
-                              onPressed: () async {
-                                try {
-                                  await appointmentService
-                                      .cancelAppointment(appointment.id);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: Text('Randevu iptal edildi')),
-                                  );
-                                } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: Text(
-                                            'Randevu iptal edilirken bir hata oluştu')),
-                                  );
-                                }
-                              },
-                            ),
-                        ],
-                      ),
-                  ],
-                ),
-              );
+                    );
+                  });
             }).toList(),
           ],
         );
@@ -165,6 +185,24 @@ class AppointmentTable extends StatelessWidget {
         return 'İptal Edildi';
       default:
         return status;
+    }
+  }
+
+  Future<String> _getClientName(String clientId, ClientService clientService,
+      Map<String, String> _clientNameCache) async {
+    if (_clientNameCache.containsKey(clientId)) {
+      return _clientNameCache[clientId]!;
+    }
+
+    try {
+      final client = await clientService.getClientById(clientId);
+      final name = client?.name ?? 'Bilinmeyen Hasta';
+
+      _clientNameCache[clientId] = name;
+      return name;
+    } catch (e) {
+      print('Error fetching client name: $e');
+      return 'Bilinmeyen Hasta';
     }
   }
 }

@@ -1,11 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-
 import '../models/diet_plan.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/client_service.dart';
 import '../services/diet_plan_service.dart';
+import '../utils/constants.dart';
 import '../widgets/diet_plan_dialog.dart';
 
 class ClientDetailScreen extends StatefulWidget {
@@ -177,10 +177,10 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
         children: [
           CircleAvatar(
             radius: 50,
-            backgroundColor: Colors.blue.shade100,
+            backgroundColor: AppColors.color2.withOpacity(0.1),
             child: Text(
               client!.name.isNotEmpty ? client!.name[0].toUpperCase() : '?',
-              style: TextStyle(fontSize: 40, color: Colors.blue.shade800),
+              style: TextStyle(fontSize: 40, color: AppColors.color1),
             ),
           ),
           SizedBox(height: 16),
@@ -206,74 +206,82 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: Colors.blue.shade800,
+          color: AppColors.color1,
         ),
       ),
     );
   }
 
   Widget _buildInfoCard() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoRow('Boy', '${client!.height} cm'),
-            Divider(),
-            _buildInfoRow('Kilo', '${client!.weight} kg'),
-            Divider(),
-            _buildInfoRow('BMI', '${client!.bmi.toStringAsFixed(2)}'),
-            Divider(),
-            _buildInfoRow('BMI Durumu', _getBmiStatus(client!.bmi)),
-          ],
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(
+          color: AppColors.color1,
+          width: 1,
         ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildInfoRow('Boy', '${client!.height} cm'),
+          Divider(),
+          _buildInfoRow('Kilo', '${client!.weight} kg'),
+          Divider(),
+          _buildInfoRow('BMI', '${client!.bmi.toStringAsFixed(2)}'),
+          Divider(),
+          _buildInfoRow('BMI Durumu', _getBmiStatus(client!.bmi)),
+        ],
       ),
     );
   }
 
   Widget _buildHealthCard() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Alerjiler', style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
-            client!.allergies.isEmpty
-                ? Text('Bilinen alerji yok',
-                    style: TextStyle(fontStyle: FontStyle.italic))
-                : Wrap(
-                    spacing: 8,
-                    children: client!.allergies
-                        .map((allergy) => Chip(
-                              label: Text(allergy),
-                              backgroundColor: Colors.red.shade100,
-                            ))
-                        .toList(),
-                  ),
-            SizedBox(height: 16),
-            Text('Hastalıklar', style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
-            client!.diseases.isEmpty
-                ? Text('Bilinen hastalık yok',
-                    style: TextStyle(fontStyle: FontStyle.italic))
-                : Wrap(
-                    spacing: 8,
-                    children: client!.diseases
-                        .map((disease) => Chip(
-                              label: Text(disease),
-                              backgroundColor: Colors.orange.shade100,
-                            ))
-                        .toList(),
-                  ),
-          ],
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(
+          color: AppColors.color1,
+          width: 1,
         ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Alerjiler', style: TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(height: 8),
+          client!.allergies.isEmpty
+              ? Text('Bilinen alerji yok',
+                  style: TextStyle(fontStyle: FontStyle.italic))
+              : Wrap(
+                  spacing: 8,
+                  children: client!.allergies
+                      .map((allergy) => Chip(
+                            label: Text(allergy),
+                            backgroundColor: Colors.red.shade100,
+                          ))
+                      .toList(),
+                ),
+          SizedBox(height: 16),
+          Text('Hastalıklar', style: TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(height: 8),
+          client!.diseases.isEmpty
+              ? Text('Bilinen hastalık yok',
+                  style: TextStyle(fontStyle: FontStyle.italic))
+              : Wrap(
+                  spacing: 8,
+                  children: client!.diseases
+                      .map((disease) => Chip(
+                            label: Text(disease),
+                            backgroundColor: Colors.orange.shade100,
+                          ))
+                      .toList(),
+                ),
+        ],
       ),
     );
   }
@@ -341,8 +349,16 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
                     itemCount: _dietPlans.length,
                     itemBuilder: (context, index) {
                       final plan = _dietPlans[index];
-                      return Card(
+                      return Container(
                         margin: EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(
+                            color: AppColors.color1,
+                            width: 1.0,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: ExpansionTile(
                           title: Text(plan.title),
                           subtitle: Text(
@@ -351,11 +367,12 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: Icon(Icons.edit, color: Colors.blue),
+                                icon: Icon(Icons.edit, color: AppColors.color2),
                                 onPressed: () => _addOrEditDietPlan(plan),
                               ),
                               IconButton(
-                                icon: Icon(Icons.delete, color: Colors.red),
+                                icon: Icon(Icons.delete,
+                                    color: Colors.red.shade300),
                                 onPressed: () =>
                                     _showDeleteConfirmation(plan.id!),
                               ),

@@ -1,11 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-
 import '../models/appointment.dart';
 import '../models/user.dart';
 import '../screens/calendar_dietitian_screen.dart';
 import '../services/appointment_service.dart';
+import '../services/dietitian_service.dart';
 import '../utils/constants.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -28,6 +28,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Client? _updatedClient;
   bool _isLoading = true;
   List<Appointment> _appointments = [];
+  final DietitianService _dietitianService = DietitianService();
+  final Map<String, String> _dietitianNameCache = {};
 
   @override
   void initState() {
@@ -243,6 +245,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  // Diyetisyen adını getiren yardımcı metod
+  Future<String> _getDietitianName(String? dietitianId) async {
+    if (dietitianId == null) {
+      return 'Diyetisyen atanmamış';
+    }
+
+    // Önbellekte varsa oradan döndür
+    if (_dietitianNameCache.containsKey(dietitianId)) {
+      return _dietitianNameCache[dietitianId]!;
+    }
+
+    try {
+      final dietitian = await _dietitianService.getDietitianById(dietitianId);
+      final name = dietitian?.name ?? 'Bilinmeyen Diyetisyen';
+
+      // Önbelleğe ekle
+      _dietitianNameCache[dietitianId] = name;
+      return name;
+    } catch (e) {
+      print('Error fetching dietitian name: $e');
+      return 'Bilinmeyen Diyetisyen';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Diyetisyen kullanıcısı için farklı ekran göster
@@ -365,16 +391,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ],
                   ),
                   if (hasDietitian)
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        'Diyetisyen: ${_updatedClient?.dietitianUid}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ),
+                    FutureBuilder<String>(
+                        future: _getDietitianName(_updatedClient?.dietitianUid),
+                        builder: (context, snapshot) {
+                          final dietitianName =
+                              snapshot.connectionState == ConnectionState.done
+                                  ? snapshot.data ?? 'Yükleniyor...'
+                                  : 'Yükleniyor...';
+
+                          return Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              'Diyetisyen: $dietitianName',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          );
+                        }),
                   if (_appointments.isNotEmpty) ...[
                     Padding(
                       padding: const EdgeInsets.all(8.0),

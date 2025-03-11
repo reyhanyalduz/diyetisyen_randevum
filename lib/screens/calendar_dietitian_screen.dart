@@ -33,6 +33,71 @@ class _DietitianAppointmentPageState extends State<DietitianAppointmentPage> {
         _appointmentService.getDietitianAppointments(widget.currentUser.uid);
   }
 
+  Widget _buildDayButton(int dayOffset) {
+    final day = DateTime.now().add(Duration(days: dayOffset));
+    final isSelected = day.year == _selectedDay.year &&
+        day.month == _selectedDay.month &&
+        day.day == _selectedDay.day;
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _selectedDay = day;
+        });
+        _loadAppointments();
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color:
+              isSelected ? Theme.of(context).primaryColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            Text(
+              day.day.toString(),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isSelected ? Colors.white : Colors.black,
+              ),
+            ),
+            Text(
+              _getShortDayName(day),
+              style: TextStyle(
+                fontSize: 12,
+                color: isSelected ? Colors.white : Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  String _getDayName(DateTime date) {
+    List<String> days = [
+      'Pazartesi',
+      'Salı',
+      'Çarşamba',
+      'Perşembe',
+      'Cuma',
+      'Cumartesi',
+      'Pazar'
+    ];
+    // DateTime'da haftanın günü 1-7 arasında (1=Pazartesi, 7=Pazar)
+    return days[date.weekday - 1];
+  }
+
+  String _getShortDayName(DateTime date) {
+    List<String> days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    return days[date.weekday - 1];
+  }
+
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -56,6 +121,7 @@ class _DietitianAppointmentPageState extends State<DietitianAppointmentPage> {
       setState(() {
         _selectedDay = picked;
       });
+      _loadAppointments();
     }
   }
 

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-
+import 'package:intl/intl.dart';
 import '../models/diet_plan.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
@@ -468,101 +468,128 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Text(
             'Diyet Listeleri',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
-        _isLoadingDietPlans
-            ? Center(child: CircularProgressIndicator())
-            : _dietPlans.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child:
-                          Text('Henüz atanmış diyet listesi bulunmamaktadır.'),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          itemCount: _dietPlans.length,
+          itemBuilder: (context, index) {
+            final dietPlan = _dietPlans[index];
+            return Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(
+                    color: Colors.grey.shade300,
+                    width: 1.0,
+                  ),
+                  borderRadius: BorderRadius.circular(12.0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
                     ),
-                  )
-                : ListView.builder(
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    itemCount: _dietPlans.length,
-                    itemBuilder: (context, index) {
-                      final plan = _dietPlans[index];
-                      return Card(
-                        margin: EdgeInsets.symmetric(
-                            horizontal: 16.0, vertical: 8.0),
-                        child: ExpansionTile(
-                          title: Text(plan.title),
-                          subtitle: Text(
-                              'Oluşturulma: ${_formatDate(plan.createdAt)}'),
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildMealSection('Kahvaltı', plan.breakfast,
-                                      plan.breakfastTime),
-                                  Divider(),
-                                  _buildMealSection('Öğle Yemeği', plan.lunch,
-                                      plan.lunchTime),
-                                  Divider(),
-                                  _buildMealSection(
-                                      'Ara Öğün', plan.snack, plan.snackTime),
-                                  Divider(),
-                                  _buildMealSection('Akşam Yemeği', plan.dinner,
-                                      plan.dinnerTime),
-                                  if (plan.updatedAt != null) ...[
-                                    Divider(),
-                                    Text(
-                                      'Son Güncelleme: ${_formatDate(plan.updatedAt!)}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                    ),
-                                  ],
-                                ],
+                  ],
+                ),
+                child: ExpansionTile(
+                  title: Text(
+                    dietPlan.title.isEmpty ? 'Diyet Listesi' : dietPlan.title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  subtitle: Text(
+                    DateFormat('dd.MM.yyyy')
+                        .format(dietPlan.createdAt.toDate()),
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 13,
+                    ),
+                  ),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildMealSection('Kahvaltı', dietPlan.breakfast,
+                              dietPlan.breakfastTime),
+                          Divider(height: 24),
+                          _buildMealSection('Öğle Yemeği', dietPlan.lunch,
+                              dietPlan.lunchTime),
+                          Divider(height: 24),
+                          _buildMealSection(
+                              'Ara Öğün', dietPlan.snack, dietPlan.snackTime),
+                          Divider(height: 24),
+                          _buildMealSection('Akşam Yemeği', dietPlan.dinner,
+                              dietPlan.dinnerTime),
+                          if (dietPlan.notes.isNotEmpty) ...[
+                            Divider(height: 24),
+                            Text(
+                              'Notlar:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
                               ),
                             ),
+                            SizedBox(height: 8),
+                            Text(
+                              dietPlan.notes,
+                              style: TextStyle(color: Colors.black87),
+                            ),
                           ],
-                        ),
-                      );
-                    },
-                  ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       ],
     );
   }
 
-  Widget _buildMealSection(String title, String meal, String time) {
+  Widget _buildMealSection(String title, String content, String time) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.blue.shade800,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '$title:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            Text(
+              time,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 13,
+              ),
+            ),
+          ],
         ),
-        SizedBox(height: 4),
-        Text(meal),
+        SizedBox(height: 8),
         Text(
-          'Saat: $time',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey.shade700,
-          ),
+          content,
+          style: TextStyle(color: Colors.black87),
         ),
       ],
     );
-  }
-
-  String _formatDate(dynamic date) {
-    if (date == null) return 'Belirtilmemiş';
-    if (date is Timestamp) {
-      return '${date.toDate().day}/${date.toDate().month}/${date.toDate().year}';
-    }
-    return 'Belirtilmemiş';
   }
 }

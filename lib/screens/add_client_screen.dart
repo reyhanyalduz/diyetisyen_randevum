@@ -1,10 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/client_service.dart';
-
+import '../utils/constants.dart';
 class AddClientScreen extends StatefulWidget {
   final String dietitianUid;
 
@@ -207,7 +206,7 @@ class _AddClientScreenState extends State<AddClientScreen> {
                 onPressed: _isLoading ? null : _addNewClient,
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.green,
+                  backgroundColor: AppColors.color1,
                 ),
                 child: _isLoading
                     ? CircularProgressIndicator(color: Colors.white)

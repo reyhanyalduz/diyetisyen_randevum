@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/user.dart';
-import '../services/auth_service.dart';
-import '../services/client_service.dart';
 import '../screens/add_client_screen.dart';
 import '../screens/client_detail_screen.dart';
+import '../services/auth_service.dart';
+import '../services/client_service.dart';
+import '../utils/constants.dart';
 
 class DietitianProfileScreen extends StatefulWidget {
   final AppUser user;
@@ -15,7 +16,6 @@ class DietitianProfileScreen extends StatefulWidget {
 }
 
 class _DietitianProfileScreenState extends State<DietitianProfileScreen> {
-
   final ClientService _clientService = ClientService();
   List<Client> clients = [];
   bool isLoading = true;
@@ -61,23 +61,6 @@ class _DietitianProfileScreenState extends State<DietitianProfileScreen> {
             },
           ),
         ],
-      ),floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  AddClientScreen(dietitianUid: widget.user.uid),
-            ),
-          ).then((result) {
-            if (result == true) {
-              _loadClients();
-            }
-          });
-        },
-        backgroundColor: Colors.green,
-        child: Icon(Icons.person_add),
-        tooltip: 'Danışan Ekle',
       ),
       body: RefreshIndicator(
         onRefresh: _loadClients,
@@ -122,39 +105,47 @@ class _DietitianProfileScreenState extends State<DietitianProfileScreen> {
       ),
     );
   }
-   Widget _buildProfileCard() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: Colors.green.shade100,
-              child: Text(
-                widget.user.name.isNotEmpty
-                    ? widget.user.name[0].toUpperCase()
-                    : '?',
-                style: TextStyle(fontSize: 30, color: Colors.green.shade800),
+
+  Widget _buildProfileCard() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 40,
+                child: Text(
+                  widget.user.name.isNotEmpty
+                      ? widget.user.name[0].toUpperCase()
+                      : '?',
+                  style: TextStyle(fontSize: 30),
+                ),
               ),
-            ),
-            SizedBox(height: 16),
-            Text(
-              widget.user.name,
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
+              SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.user.name,
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    widget.user.email,
+                    style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          if (widget.user is Dietitian) ...[
+            Divider(color: Colors.grey.shade300),
             SizedBox(height: 8),
-            Text(
-              widget.user.email,
-              style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-            ),
-            SizedBox(height: 16),
-            if (widget.user is Dietitian) ...[
-              Divider(),
-              SizedBox(height: 8),
-              Row(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Uzmanlık Alanı:',
@@ -167,8 +158,11 @@ class _DietitianProfileScreenState extends State<DietitianProfileScreen> {
                   ),
                 ],
               ),
-              SizedBox(height: 8),
-              Row(
+            ),
+            SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Toplam Danışan:',
@@ -179,9 +173,9 @@ class _DietitianProfileScreenState extends State<DietitianProfileScreen> {
                   ),
                 ],
               ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -192,7 +186,6 @@ class _DietitianProfileScreenState extends State<DietitianProfileScreen> {
       style: TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.bold,
-        color: Colors.green.shade800,
       ),
     );
   }
@@ -240,7 +233,7 @@ class _DietitianProfileScreenState extends State<DietitianProfileScreen> {
                   icon: Icon(Icons.person_add),
                   label: Text('Danışan Ekle'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                    backgroundColor: AppColors.color1,
                   ),
                 ),
               ],
@@ -256,31 +249,42 @@ class _DietitianProfileScreenState extends State<DietitianProfileScreen> {
       itemCount: clients.length,
       itemBuilder: (context, index) {
         final client = clients[index];
-        return Card(
-          elevation: 2,
+        return Container(
           margin: EdgeInsets.only(bottom: 12),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(
+              color: AppColors.color2.withOpacity(0.3),
+              width: 1.0,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: ListTile(
             contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             leading: CircleAvatar(
-              backgroundColor: Colors.blue.shade100,
+              backgroundColor: AppColors.color2.withOpacity(0.1),
               child: Text(
                 client.name.isNotEmpty ? client.name[0].toUpperCase() : '?',
-                style: TextStyle(color: Colors.blue.shade800),
+                style: TextStyle(color: AppColors.color1),
               ),
             ),
-            title: Text(client.name,
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(
+              client.name,
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(height: 4),
                 Text('Boy: ${client.height} cm | Kilo: ${client.weight} kg'),
-                Text('BMI: ${client.bmi.toStringAsFixed(2)}'),
+                Text(
+                  'BMI: ${client.bmi.toStringAsFixed(2)}',
+                  style: TextStyle(color: AppColors.color1),
+                ),
               ],
             ),
-            trailing: Icon(Icons.arrow_forward_ios, size: 16),
+            trailing: Icon(Icons.arrow_forward_ios,
+                size: 16, color: AppColors.color2),
             onTap: () {
               Navigator.push(
                 context,
@@ -296,4 +300,3 @@ class _DietitianProfileScreenState extends State<DietitianProfileScreen> {
     );
   }
 }
-

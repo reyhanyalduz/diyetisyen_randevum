@@ -1,140 +1,351 @@
 import 'package:flutter/material.dart';
+
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../utils/constants.dart';
 
-class SignUpPage extends StatefulWidget {
+class SignUpScreen extends StatefulWidget {
   @override
-  _SignUpPageState createState() => _SignUpPageState();
+  _SignUpScreenState createState() => _SignUpScreenState();
 }
 
-class _SignUpPageState extends State<SignUpPage> {
+class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _heightController = TextEditingController();
-  final TextEditingController _weightController = TextEditingController();
-  UserType _userType = UserType.client;
-  final AuthService _authService = AuthService();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _nameController = TextEditingController();
+  String _selectedUserType = 'client';
+  bool _isLoading = false;
+  bool _obscurePassword = true;
 
-  Future<void> _signUp() async {
+  @override
+  Widget build(BuildContext context) {
+    double screenHeight = MediaQuery.of(context).size.height;
+    double keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    bool isKeyboardOpen = keyboardHeight > 0;
+
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        child: Column(
+          children: [
+            if (!isKeyboardOpen) SizedBox(height: 50),
+            Container(
+              height:
+                  isKeyboardOpen ? screenHeight * 0.20 : screenHeight * 0.27,
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Image.asset('images/dietitian.png',
+                      color: AppColors.color1),
+                ),
+              ),
+            ),
+            if (!isKeyboardOpen) SizedBox(height: 20),
+            Expanded(
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.color1,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(40.0),
+                    topRight: Radius.circular(40.0),
+                  ),
+                ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Form(
+                            key: _formKey,
+                            child: Column(
+                              children: [
+                                SizedBox(height: isKeyboardOpen ? 5 : 25),
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 100,
+                                      child: Padding(
+                                        padding: EdgeInsets.only(left: 20),
+                                        child: Text(
+                                          'Ad Soyad',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          textAlign: TextAlign.left,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: _nameController,
+                                        decoration: InputDecoration(
+                                          hintText:
+                                              'Adınızı ve soyadınızı giriniz...',
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.all(
+                                                Radius.circular(32.0)),
+                                          ),
+                                          filled: true,
+                                          fillColor: Colors.white,
+                                          contentPadding: EdgeInsets.symmetric(
+                                              horizontal: 20, vertical: 10),
+                                        ),
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty) {
+                                            return 'Lütfen adınızı ve soyadınızı girin';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                    SizedBox(width: 20),
+                                  ],
+                                ),
+                                SizedBox(height: isKeyboardOpen ? 5 : 25),
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 100,
+                                      child: Padding(
+                                        padding: EdgeInsets.only(left: 20),
+                                        child: Text(
+                                          'E-mail',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          textAlign: TextAlign.left,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: _emailController,
+                                        decoration: InputDecoration(
+                                          hintText: 'E-mailinizi giriniz...',
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.all(
+                                                Radius.circular(32.0)),
+                                          ),
+                                          filled: true,
+                                          fillColor: Colors.white,
+                                          contentPadding: EdgeInsets.symmetric(
+                                              horizontal: 20, vertical: 10),
+                                        ),
+                                        keyboardType:
+                                            TextInputType.emailAddress,
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty) {
+                                            return 'Lütfen e-posta adresinizi girin';
+                                          }
+                                          if (!value.contains('@')) {
+                                            return 'Geçerli bir e-posta adresi girin';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                    SizedBox(width: 20),
+                                  ],
+                                ),
+                                SizedBox(height: isKeyboardOpen ? 5 : 25),
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 100,
+                                      child: Padding(
+                                        padding: EdgeInsets.only(left: 20),
+                                        child: Text(
+                                          'Şifre',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          textAlign: TextAlign.left,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: _passwordController,
+                                        decoration: InputDecoration(
+                                          hintText: 'Şifrenizi giriniz...',
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.all(
+                                                Radius.circular(32.0)),
+                                          ),
+                                          filled: true,
+                                          fillColor: Colors.white,
+                                          contentPadding: EdgeInsets.symmetric(
+                                              horizontal: 20, vertical: 10),
+                                          suffixIcon: IconButton(
+                                            icon: Icon(
+                                              _obscurePassword
+                                                  ? Icons.visibility
+                                                  : Icons.visibility_off,
+                                            ),
+                                            onPressed: () {
+                                              setState(() {
+                                                _obscurePassword =
+                                                    !_obscurePassword;
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                        obscureText: _obscurePassword,
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty) {
+                                            return 'Lütfen şifrenizi girin';
+                                          }
+                                          if (value.length < 6) {
+                                            return 'Şifre en az 6 karakter olmalıdır';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                    SizedBox(width: 20),
+                                  ],
+                                ),
+                                SizedBox(height: isKeyboardOpen ? 5 : 25),
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 100,
+                                      child: Padding(
+                                        padding: EdgeInsets.only(left: 20),
+                                        child: Text(
+                                          'Kullanıcı',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          textAlign: TextAlign.left,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 20, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.all(
+                                              Radius.circular(32.0)),
+                                        ),
+                                        child: DropdownButtonHideUnderline(
+                                          child: DropdownButton<String>(
+                                            value: _selectedUserType,
+                                            isExpanded: true,
+                                            items: [
+                                              DropdownMenuItem(
+                                                value: 'client',
+                                                child: Text('Danışan'),
+                                              ),
+                                              DropdownMenuItem(
+                                                value: 'dietitian',
+                                                child: Text('Diyetisyen'),
+                                              ),
+                                            ],
+                                            onChanged: (value) {
+                                              setState(() {
+                                                _selectedUserType = value!;
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 20),
+                                  ],
+                                ),
+                                SizedBox(height: isKeyboardOpen ? 5 : 25),
+                                ElevatedButton(
+                                  onPressed: _isLoading ? null : _handleSignUp,
+                                  child: _isLoading
+                                      ? CircularProgressIndicator(
+                                          color: Colors.white)
+                                      : Text("Kayıt Ol"),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: AppColors.color1,
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 40, vertical: 12),
+                                    textStyle: TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                                SizedBox(height: isKeyboardOpen ? 5 : 10),
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pushReplacementNamed(
+                                          context, '/login'),
+                                  child: Text(
+                                      "Zaten hesabınız var mı? Giriş yapın"),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleSignUp() async {
     if (_formKey.currentState!.validate()) {
-      AppUser? user = await _authService.signUp(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-        _userType,
-        _nameController.text.trim(),
-        int.tryParse(_heightController.text.trim()) ?? 0,
-        double.tryParse(_weightController.text.trim()) ?? 0.0,
-      );
+      setState(() {
+        _isLoading = true;
+      });
 
-      if (user != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text("Kayıt başarılı! Giriş yapabilirsiniz."),
-              duration: Duration(seconds: 2)),
+      try {
+        final authService = AuthService();
+        await authService.signUp(
+          _emailController.text,
+          _passwordController.text,
+          _selectedUserType == 'client' ? UserType.client : UserType.dietitian,
+          _nameController.text,
+          170,
+          60.0,
         );
-        await Future.delayed(Duration(seconds: 2));
+
         if (!mounted) return;
         Navigator.pushReplacementNamed(
           context,
-          '/login',
+          _selectedUserType == 'client' ? '/clientHome' : '/dietitianHome',
         );
-      } else {
+      } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Kayıt başarısız, lütfen tekrar deneyin.")),
+          SnackBar(content: Text('Kayıt olma başarısız: $e')),
         );
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("Kayıt Ol")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: InputDecoration(labelText: "Ad Soyad"),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Lütfen ad soyad giriniz';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
-                controller: _emailController,
-                decoration: InputDecoration(labelText: "E-posta"),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Lütfen e-posta giriniz';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
-                controller: _passwordController,
-                decoration: InputDecoration(labelText: "Şifre"),
-                obscureText: true,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Lütfen şifre giriniz';
-                  }
-                  return null;
-                },
-              ),
-              Visibility(
-                visible: _userType == UserType.client,
-                child: Column(
-                  children: [
-                    TextFormField(
-                      controller: _heightController,
-                      decoration: InputDecoration(labelText: "Boy (cm)"),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (_userType == UserType.client) {
-                          if (value == null || value.isEmpty) {
-                            return 'Lütfen boy giriniz';
-                          }
-                          int? height = int.tryParse(value);
-                          if (height == null || height < 100 || height > 250) {
-                            return 'Geçerli bir boy giriniz (100-250 cm)';
-                          }
-                        }
-                        return null;
-                      },
-                    ),
-                    TextFormField(
-                      controller: _weightController,
-                      decoration: InputDecoration(labelText: "Kilo (kg)"),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (_userType == UserType.client) {
-                          if (value == null || value.isEmpty) {
-                            return 'Lütfen kilo giriniz';
-                          }
-                          double? weight = double.tryParse(value);
-                          if (weight == null || weight < 30 || weight > 300) {
-                            return 'Geçerli bir kilo giriniz (30-300 kg)';
-                          }
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              ElevatedButton(onPressed: _signUp, child: Text("Kayıt Ol")),
-            ],
-          ),
-        ),
-      ),
-    );
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _nameController.dispose();
+    super.dispose();
   }
 }

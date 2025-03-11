@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
+
 import '../screens/profile_dietitian.dart';
 import 'firebase_options.dart';
 import 'models/user.dart';
@@ -42,7 +43,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/': (context) => SplashPage(),
         '/login': (context) => LoginPage(),
-        '/signup': (context) => SignUpPage(),
+        '/signup': (context) => SignUpScreen(),
         '/clientHome': (context) => HomeScreen(userType: UserType.client),
         '/dietitianHome': (context) => HomeScreen(userType: UserType.dietitian),
       },
