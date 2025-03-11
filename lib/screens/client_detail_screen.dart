@@ -1,7 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../models/diet_plan.dart';
 import '../models/user.dart';
+import '../services/auth_service.dart';
 import '../services/client_service.dart';
+import '../services/diet_plan_service.dart';
+import '../widgets/diet_plan_dialog.dart';
 
 class ClientDetailScreen extends StatefulWidget {
   final String clientId;
@@ -14,13 +19,17 @@ class ClientDetailScreen extends StatefulWidget {
 
 class _ClientDetailScreenState extends State<ClientDetailScreen> {
   final ClientService _clientService = ClientService();
+  final DietPlanService _dietPlanService = DietPlanService();
   Client? client;
   bool isLoading = true;
+  List<DietPlan> _dietPlans = [];
+  bool _isLoadingDietPlans = false;
 
   @override
   void initState() {
     super.initState();
     _loadClientData();
+    _loadDietPlans();
   }
 
   Future<void> _loadClientData() async {
@@ -39,6 +48,96 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadDietPlans() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingDietPlans = true;
+      });
+    }
+
+    try {
+      print('Loading diet plans for client: ${widget.clientId}');
+      final plans =
+          await _dietPlanService.getDietPlansForClient(widget.clientId);
+
+      print(
+          'Loaded ${plans.length} diet plans: ${plans.map((p) => p.title).toList()}');
+
+      if (mounted) {
+        setState(() {
+          _dietPlans = plans;
+          _isLoadingDietPlans = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading diet plans: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingDietPlans = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _addOrEditDietPlan(DietPlan? existingPlan) async {
+    final currentUser = await AuthService().getCurrentUser();
+    if (currentUser == null) return;
+
+    print('Current user: ${currentUser.uid}');
+
+    final result = await showDialog<DietPlan>(
+      context: context,
+      builder: (context) => DietPlanDialog(
+        clientId: widget.clientId,
+        dietitianId: currentUser.uid,
+        existingPlan: existingPlan,
+      ),
+    );
+
+    if (result != null) {
+      try {
+        print(
+            'Diet plan to save: ${result.title}, clientId: ${result.clientId}, dietitianId: ${result.dietitianId}');
+
+        if (result.id == null) {
+          // Add new diet plan
+          final newId = await _dietPlanService.addDietPlan(result);
+          print('New diet plan added with ID: $newId');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Diyet planı başarıyla eklendi')),
+          );
+        } else {
+          // Update existing diet plan
+          await _dietPlanService.updateDietPlan(result);
+          print('Diet plan updated with ID: ${result.id}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Diyet planı başarıyla güncellendi')),
+          );
+        }
+        _loadDietPlans(); // Reload diet plans
+      } catch (e) {
+        print('Error saving diet plan: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('İşlem başarısız oldu: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteDietPlan(String dietPlanId) async {
+    try {
+      await _dietPlanService.deleteDietPlan(dietPlanId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Diyet planı başarıyla silindi')),
+      );
+      _loadDietPlans(); // Reload diet plans
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Silme işlemi başarısız oldu: $e')),
+      );
     }
   }
 
@@ -64,6 +163,8 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
                       SizedBox(height: 24),
                       _buildSectionTitle('Sağlık Bilgileri'),
                       _buildHealthCard(),
+                      SizedBox(height: 24),
+                      _buildDietPlansSection(),
                     ],
                   ),
                 ),
@@ -200,5 +301,219 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
     } else {
       return 'Obez';
     }
+  }
+
+  Widget _buildDietPlansSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Diyet Planları',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _addOrEditDietPlan(null),
+              icon: Icon(Icons.add),
+              label: Text('Yeni Plan Ekle'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+        _isLoadingDietPlans
+            ? Center(child: CircularProgressIndicator())
+            : _dietPlans.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text('Henüz diyet planı eklenmemiş'),
+                    ),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    itemCount: _dietPlans.length,
+                    itemBuilder: (context, index) {
+                      final plan = _dietPlans[index];
+                      return Card(
+                        margin: EdgeInsets.only(bottom: 16),
+                        child: ExpansionTile(
+                          title: Text(plan.title),
+                          subtitle: Text(
+                              'Oluşturulma: ${_formatDate(plan.createdAt)}'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.edit, color: Colors.blue),
+                                onPressed: () => _addOrEditDietPlan(plan),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete, color: Colors.red),
+                                onPressed: () =>
+                                    _showDeleteConfirmation(plan.id!),
+                              ),
+                            ],
+                          ),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        width: 120,
+                                        child: Text('Kahvaltı:',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold)),
+                                      ),
+                                      Expanded(
+                                        child: Text(plan.breakfast),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 120,
+                                        child: Text('Saat:'),
+                                      ),
+                                      Text(plan.breakfastTime),
+                                    ],
+                                  ),
+                                  SizedBox(height: 12),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        width: 120,
+                                        child: Text('Öğle Yemeği:',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold)),
+                                      ),
+                                      Expanded(
+                                        child: Text(plan.lunch),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 120,
+                                        child: Text('Saat:'),
+                                      ),
+                                      Text(plan.lunchTime),
+                                    ],
+                                  ),
+                                  SizedBox(height: 12),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        width: 120,
+                                        child: Text('Ara Öğün:',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold)),
+                                      ),
+                                      Expanded(
+                                        child: Text(plan.snack),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 120,
+                                        child: Text('Saat:'),
+                                      ),
+                                      Text(plan.snackTime),
+                                    ],
+                                  ),
+                                  SizedBox(height: 12),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        width: 120,
+                                        child: Text('Akşam Yemeği:',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold)),
+                                      ),
+                                      Expanded(
+                                        child: Text(plan.dinner),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 120,
+                                        child: Text('Saat:'),
+                                      ),
+                                      Text(plan.dinnerTime),
+                                    ],
+                                  ),
+                                  if (plan.notes.isNotEmpty) ...[
+                                    SizedBox(height: 16),
+                                    Text('Notlar:',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold)),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                          left: 8.0, top: 4.0),
+                                      child: Text(plan.notes),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+      ],
+    );
+  }
+
+  void _showDeleteConfirmation(String dietPlanId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Diyet Planını Sil'),
+        content: Text('Bu diyet planını silmek istediğinizden emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () {
+              _deleteDietPlan(dietPlanId);
+              Navigator.pop(context);
+            },
+            child: Text('Sil', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(Timestamp timestamp) {
+    final date = timestamp.toDate();
+    return '${date.day}/${date.month}/${date.year}';
   }
 }

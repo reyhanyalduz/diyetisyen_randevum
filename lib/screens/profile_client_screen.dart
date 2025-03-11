@@ -1,9 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
+import '../models/diet_plan.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/dietitian_service.dart';
-import '../widgets/diet_list_widget.dart';
 import '../widgets/info_card_widget.dart';
 import '../widgets/tag_section_widget.dart';
 
@@ -23,6 +24,8 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   final TextEditingController _weightController = TextEditingController();
   final DietitianService _dietitianService = DietitianService();
   Dietitian? _selectedDietitian;
+  List<DietPlan> _dietPlans = [];
+  bool _isLoadingDietPlans = false;
 
   @override
   void initState() {
@@ -30,6 +33,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     _client = widget.user as Client;
     _loadSelectedDietitian();
     _verifyClientDataConsistency();
+    _loadDietPlans();
   }
 
   Future<void> _loadSelectedDietitian() async {
@@ -80,6 +84,38 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
       }
     } catch (e) {
       print('Error verifying client data consistency: $e');
+    }
+  }
+
+  Future<void> _loadDietPlans() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingDietPlans = true;
+      });
+    }
+
+    try {
+      final dietPlansSnapshot = await _firestore
+          .collection('dietplans')
+          .where('clientId', isEqualTo: _client.uid)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      if (mounted) {
+        setState(() {
+          _dietPlans = dietPlansSnapshot.docs
+              .map((doc) => DietPlan.fromMap(doc.data(), doc.id))
+              .toList();
+          _isLoadingDietPlans = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading diet plans: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingDietPlans = false;
+        });
+      }
     }
   }
 
@@ -415,12 +451,118 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                     SizedBox(height: 20),
                     //_buildTabSection(),
                     SizedBox(height: 20),
-                    BuildDietList(),
+                    _buildDietPlansSection(),
                   ],
                 ),
               ),
             );
           }),
     );
+  }
+
+  Widget _buildDietPlansSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Text(
+            'Diyet Listeleri',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ),
+        _isLoadingDietPlans
+            ? Center(child: CircularProgressIndicator())
+            : _dietPlans.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child:
+                          Text('Henüz atanmış diyet listesi bulunmamaktadır.'),
+                    ),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    itemCount: _dietPlans.length,
+                    itemBuilder: (context, index) {
+                      final plan = _dietPlans[index];
+                      return Card(
+                        margin: EdgeInsets.symmetric(
+                            horizontal: 16.0, vertical: 8.0),
+                        child: ExpansionTile(
+                          title: Text(plan.title),
+                          subtitle: Text(
+                              'Oluşturulma: ${_formatDate(plan.createdAt)}'),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildMealSection('Kahvaltı', plan.breakfast,
+                                      plan.breakfastTime),
+                                  Divider(),
+                                  _buildMealSection('Öğle Yemeği', plan.lunch,
+                                      plan.lunchTime),
+                                  Divider(),
+                                  _buildMealSection(
+                                      'Ara Öğün', plan.snack, plan.snackTime),
+                                  Divider(),
+                                  _buildMealSection('Akşam Yemeği', plan.dinner,
+                                      plan.dinnerTime),
+                                  if (plan.updatedAt != null) ...[
+                                    Divider(),
+                                    Text(
+                                      'Son Güncelleme: ${_formatDate(plan.updatedAt!)}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+      ],
+    );
+  }
+
+  Widget _buildMealSection(String title, String meal, String time) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.blue.shade800,
+          ),
+        ),
+        SizedBox(height: 4),
+        Text(meal),
+        Text(
+          'Saat: $time',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey.shade700,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDate(dynamic date) {
+    if (date == null) return 'Belirtilmemiş';
+    if (date is Timestamp) {
+      return '${date.toDate().day}/${date.toDate().month}/${date.toDate().year}';
+    }
+    return 'Belirtilmemiş';
   }
 }
