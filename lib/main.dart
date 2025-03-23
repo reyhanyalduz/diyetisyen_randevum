@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import '../screens/profile_dietitian.dart';
@@ -12,6 +13,8 @@ import 'screens/profile_client_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/splash_screen.dart';
 import 'services/auth_service.dart';
+import 'services/messaging_service.dart';
+import 'services/notification_service.dart';
 import 'utils/constants.dart';
 
 void main() async {
@@ -20,6 +23,44 @@ void main() async {
   await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform); // Firebase'i başlat
   await initializeDateFormatting('tr', null); // Türkçe tarih formatını yükle
+
+  // Bildirim servislerini başlat
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+
+  final messagingService = MessagingService();
+  await messagingService.initialize();
+
+  // Bildirim izinlerini kontrol et
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  // Android için bildirim izinlerini kontrol et
+  final androidImplementation =
+      flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+
+  if (androidImplementation != null) {
+    print('Requesting Android notification permissions...');
+    await androidImplementation.requestNotificationsPermission();
+    await androidImplementation.requestExactAlarmsPermission();
+    print('Android notification permissions requested');
+  }
+
+  // iOS için bildirim izinlerini kontrol et
+  final iOSImplementation =
+      flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin>();
+
+  if (iOSImplementation != null) {
+    print('Requesting iOS notification permissions...');
+    await iOSImplementation.requestPermissions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    print('iOS notification permissions requested');
+  }
 
   runApp(MyApp());
 }

@@ -172,11 +172,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
       bool isAvailable =
           await _appointmentService.isTimeAvailable(appointmentTime);
       if (isAvailable) {
-        await _appointmentService.bookAppointment(
-          appointmentTime,
-          client.uid,
-          dietitianId,
+        // Diyetisyen adını al
+        String dietitianName = await _getDietitianName(dietitianId);
+
+        // Yeni randevu oluştur
+        final appointment = Appointment(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          clientId: client.uid,
+          dietitianId: dietitianId,
+          dateTime: appointmentTime,
+          status: 'pending',
         );
+
+        // addAppointment metodunu kullan (bu metod bildirimleri de ayarlayacak)
+        await _appointmentService.addAppointment(appointment, dietitianName);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Randevu başarıyla oluşturuldu')),
         );
@@ -186,6 +196,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         );
       }
     } catch (e) {
+      print('Randevu oluşturma hatası: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Randevu oluşturulurken bir hata oluştu: $e')),
       );

@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/appointment.dart';
+import '../models/user.dart';
+import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 
 class AppointmentService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -83,5 +86,43 @@ class AppointmentService {
             .map((doc) =>
                 Appointment.fromMap(doc.data() as Map<String, dynamic>, doc.id))
             .toList());
+  }
+
+  Future<void> addAppointment(
+      Appointment appointment, String dietitianName) async {
+    try {
+      print('Adding appointment for date: ${appointment.dateTime}');
+      final docRef =
+          await _firestore.collection('appointments').add(appointment.toMap());
+      print('Appointment added with ID: ${docRef.id}');
+
+      // Sadece client'lar için bildirim ayarla
+      final currentUser = await AuthService().getCurrentUser();
+      if (currentUser?.userType == UserType.client) {
+        print('Setting up notifications for client');
+        await NotificationService().scheduleAppointmentReminder(
+          appointmentId: docRef.id.hashCode,
+          appointmentTime: appointment.dateTime,
+          dietitianName: dietitianName,
+        );
+        print('Notifications scheduled successfully');
+      } else {
+        print('Skipping notifications - user is not a client');
+      }
+    } catch (e) {
+      print('Error in addAppointment: $e');
+      throw e;
+    }
+  }
+
+  Future<void> deleteAppointment(String appointmentId) async {
+    try {
+      await _firestore.collection('appointments').doc(appointmentId).delete();
+      // Bildirimi iptal et
+      await NotificationService().cancelNotification(appointmentId.hashCode);
+    } catch (e) {
+      print('Error deleting appointment: $e');
+      throw e;
+    }
   }
 }
