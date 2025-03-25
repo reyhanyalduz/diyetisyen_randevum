@@ -1,7 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
 import '../models/diet_plan.dart';
 import '../models/user.dart';
+import '../screens/video_call_screen.dart';
+import '../services/agora_service.dart';
 import '../services/auth_service.dart';
 import '../services/client_service.dart';
 import '../services/diet_plan_service.dart';
@@ -20,6 +23,8 @@ class ClientDetailScreen extends StatefulWidget {
 class _ClientDetailScreenState extends State<ClientDetailScreen> {
   final ClientService _clientService = ClientService();
   final DietPlanService _dietPlanService = DietPlanService();
+  final AgoraService _agoraService = AgoraService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   Client? client;
   bool isLoading = true;
   List<DietPlan> _dietPlans = [];
@@ -141,11 +146,62 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
     }
   }
 
+  // Method to initiate a video call
+  Future<void> _initiateVideoCall() async {
+    try {
+      final currentUser = await AuthService().getCurrentUser();
+      if (currentUser == null) return;
+
+      print(
+          'Dietitian initiating video call: ${currentUser.uid} to ${widget.clientId}');
+
+      // Create a meeting in Firestore
+      final channelName = await _agoraService.createMeeting(
+        currentUser.uid,
+        widget.clientId,
+      );
+
+      print('Meeting created with channel name: $channelName');
+
+      // Explicitly set dietitianJoined to true as the dietitian is initiating
+      await _firestore
+          .collection('video_calls')
+          .doc(channelName)
+          .update({'dietitianJoined': true});
+
+      print('Dietitian joined status updated');
+
+      // Navigate to video call screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => VideoCallScreen(
+            channelName: channelName,
+            isDietitian: true,
+            uid: currentUser.uid,
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Error initiating video call: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Video görüşmesi başlatılamadı: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Danışan Detayları'),
+        title: Text(isLoading ? 'Danışan Detayları' : '${client?.name}'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.video_call),
+            onPressed: _initiateVideoCall,
+            tooltip: 'Video Görüşmesi Başlat',
+          ),
+        ],
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator())

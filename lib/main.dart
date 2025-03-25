@@ -4,6 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import '../screens/profile_dietitian.dart';
+import '../screens/video_call_screen.dart';
 import 'firebase_options.dart';
 import 'models/user.dart';
 import 'screens/calendar_client_screen.dart';
@@ -87,6 +88,20 @@ class MyApp extends StatelessWidget {
         '/signup': (context) => SignUpScreen(),
         '/clientHome': (context) => HomeScreen(userType: UserType.client),
         '/dietitianHome': (context) => HomeScreen(userType: UserType.dietitian),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name == '/videoCall') {
+          // Extract the arguments
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) => VideoCallScreen(
+              channelName: args['channelName'],
+              isDietitian: args['isDietitian'],
+              uid: args['uid'],
+            ),
+          );
+        }
+        return null;
       },
     );
   }

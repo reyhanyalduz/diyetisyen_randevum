@@ -16,6 +16,9 @@ dependencies:
   flutter_local_notifications: ^16.3.2
   timezone: ^0.9.2
   firebase_messaging: ^14.7.21
+  agora_rtc_engine: ^6.2.6
+  permission_handler: ^10.4.3
+  agora_token_service: ^0.1.2
 dev_dependencies:
   flutter_test:
     sdk: flutter

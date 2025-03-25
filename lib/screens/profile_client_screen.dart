@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../models/diet_plan.dart';
 import '../models/user.dart';
+import '../screens/video_call_screen.dart';
+import '../services/agora_service.dart';
 import '../services/auth_service.dart';
 import '../services/dietitian_service.dart';
 import '../widgets/info_card_widget.dart';
@@ -23,9 +26,11 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
   final DietitianService _dietitianService = DietitianService();
+  final AgoraService _agoraService = AgoraService();
   Dietitian? _selectedDietitian;
   List<DietPlan> _dietPlans = [];
   bool _isLoadingDietPlans = false;
+  bool _hasActiveCall = false;
 
   @override
   void initState() {
@@ -34,6 +39,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     _loadSelectedDietitian();
     _verifyClientDataConsistency();
     _loadDietPlans();
+    _checkForActiveCall();
   }
 
   Future<void> _loadSelectedDietitian() async {
@@ -116,6 +122,100 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
           _isLoadingDietPlans = false;
         });
       }
+    }
+  }
+
+  // Check for active video calls
+  Future<void> _checkForActiveCall() async {
+    if (_client.dietitianUid != null) {
+      try {
+        final activeCall = await _agoraService.checkForActiveCall(_client.uid,
+            isDietitian: false);
+
+        setState(() {
+          _hasActiveCall = activeCall != null;
+        });
+
+        if (_hasActiveCall) {
+          print('Active call found: ${activeCall?['channelName']}');
+          // Eğer aktif arama varsa, kullanıcıyı bilgilendir
+          if (!mounted) return;
+
+          // Eğer diyetisyen henüz katılmamışsa, bilgilendirme mesajı gösterme
+          if (activeCall?['dietitianJoined'] == true) {
+            _showIncomingCallNotification();
+          }
+        }
+      } catch (e) {
+        print('Error checking for active call: $e');
+      }
+    }
+  }
+
+  void _showIncomingCallNotification() {
+    // Kullanıcı zaten VideoCall ekranında ise bildirim gösterme
+    if (ModalRoute.of(context)?.settings.name == '/videoCall') return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.videocam, color: Colors.white),
+            SizedBox(width: 10),
+            Text('Diyetisyeninizden bir video araması var!'),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'CEVAPLA',
+          textColor: Colors.white,
+          onPressed: _joinVideoCall,
+        ),
+      ),
+    );
+  }
+
+  // Method to join a video call
+  Future<void> _joinVideoCall() async {
+    try {
+      final activeCall = await _agoraService.checkForActiveCall(_client.uid,
+          isDietitian: false);
+
+      if (activeCall == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Aktif görüşme bulunamadı.')),
+        );
+        return;
+      }
+
+      final meetingDetails = await _agoraService.joinMeeting(
+        _client.uid,
+        isDietitian: false,
+      );
+
+      if (meetingDetails != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VideoCallScreen(
+              channelName: meetingDetails['channelName'],
+              isDietitian: false,
+              uid: _client.uid,
+            ),
+            settings: RouteSettings(name: '/videoCall'),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Görüşme başlatılamadı.')),
+        );
+      }
+    } catch (e) {
+      print('Error joining video call: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Video görüşmesine katılınamadı: $e')),
+      );
     }
   }
 
@@ -330,15 +430,21 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentWidth = MediaQuery.of(context).size.width;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Profil', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('Profilim'),
         actions: [
+          if (_selectedDietitian != null && _hasActiveCall)
+            IconButton(
+              icon: Icon(Icons.video_call, color: Colors.red),
+              onPressed: _joinVideoCall,
+              tooltip: 'Video Görüşmesine Katıl',
+            ),
           IconButton(
-            icon: Icon(Icons.logout),
+            icon: Icon(Icons.exit_to_app),
             onPressed: () async {
               await AuthService().signOut();
-              if (!mounted) return;
               Navigator.pushReplacementNamed(context, '/login');
             },
           ),
