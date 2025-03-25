@@ -43,7 +43,7 @@ class _SplashPageState extends State<SplashPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset('images/dietitian.png', height: 120,color: AppColors.color1,),
+            Image.asset('assets/images/dietitian.png', height: 120,color: AppColors.color1,),
             SizedBox(height: 24),
             CircularProgressIndicator(),
           ],

@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../models/appointment.dart';
 import '../models/user.dart';
 import '../services/appointment_service.dart';
@@ -122,6 +124,108 @@ class _DietitianAppointmentPageState extends State<DietitianAppointmentPage> {
         _selectedDay = picked;
       });
       _loadAppointments();
+    }
+  }
+
+  Widget _buildAppointmentCard(Appointment appointment) {
+    return Card(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ListTile(
+        title: Text(
+          DateFormat('dd MMMM yyyy, HH:mm').format(appointment.dateTime),
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FutureBuilder<Client?>(
+              future: _getClientInfo(appointment.clientId),
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  return Text(snapshot.data!.name);
+                }
+                return SizedBox();
+              },
+            ),
+            if (appointment.isCancelled)
+              Text(
+                appointment.cancelledBy == 'client'
+                    ? 'Danışan tarafından iptal edildi'
+                    : 'Tarafınızdan iptal edildi',
+                style: TextStyle(color: Colors.red),
+              ),
+          ],
+        ),
+        trailing: !appointment.isCancelled && !appointment.isCompleted
+            ? TextButton(
+                onPressed: () => _cancelAppointment(appointment),
+                child: Text(
+                  'İptal Et',
+                  style: TextStyle(color: Colors.red),
+                ),
+              )
+            : null,
+      ),
+    );
+  }
+
+  Future<void> _cancelAppointment(Appointment appointment) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Randevu İptali'),
+        content: Text('Randevuyu iptal etmek istediğinize emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('İptal Et'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('appointments')
+            .doc(appointment.id)
+            .update({
+          'isCancelled': true,
+          'cancelledBy': 'dietitian',
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Randevu başarıyla iptal edildi')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Randevu iptal edilirken bir hata oluştu'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<Client?> _getClientInfo(String clientId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('clients')
+          .doc(clientId)
+          .get();
+      if (doc.exists) {
+        final user = AppUser.fromMap(doc.data() as Map<String, dynamic>);
+        return user is Client ? user : null;
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching client info: $e');
+      return null;
     }
   }
 

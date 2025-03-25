@@ -8,6 +8,7 @@ import '../screens/video_call_screen.dart';
 import '../services/agora_service.dart';
 import '../services/auth_service.dart';
 import '../services/dietitian_service.dart';
+import '../services/pdf_service.dart';
 import '../widgets/info_card_widget.dart';
 import '../widgets/tag_section_widget.dart';
 
@@ -27,6 +28,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   final TextEditingController _weightController = TextEditingController();
   final DietitianService _dietitianService = DietitianService();
   final AgoraService _agoraService = AgoraService();
+  final PdfService _pdfService = PdfService();
   Dietitian? _selectedDietitian;
   List<DietPlan> _dietPlans = [];
   bool _isLoadingDietPlans = false;
@@ -509,17 +511,24 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                     ),
 
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        InfoCard('Vücut Kitle İndeksi',
-                            '${_client.bmi.toStringAsFixed(2)}'),
-                        GestureDetector(
-                          onTap: () => _showMeasurementDialog(),
-                          child: InfoCard('Kilo', '${_client.weight} kg'),
+                        Expanded(
+                          child: InfoCard(
+                              'VKİ', '${_client.bmi.toStringAsFixed(2)}'),
                         ),
-                        GestureDetector(
-                          onTap: () => _showMeasurementDialog(),
-                          child: InfoCard('Boy', '${_client.height} cm'),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _showMeasurementDialog(),
+                            child: InfoCard('Kilo', '${_client.weight} kg'),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _showMeasurementDialog(),
+                            child: InfoCard('Boy', '${_client.height} cm'),
+                          ),
                         ),
                       ],
                     ),
@@ -586,84 +595,109 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
           itemCount: _dietPlans.length,
           itemBuilder: (context, index) {
             final dietPlan = _dietPlans[index];
-            return Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(
-                    color: Colors.grey.shade300,
-                    width: 1.0,
-                  ),
-                  borderRadius: BorderRadius.circular(12.0),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      spreadRadius: 1,
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: ExpansionTile(
-                  title: Text(
-                    dietPlan.title.isEmpty ? 'Diyet Listesi' : dietPlan.title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  subtitle: Text(
-                    DateFormat('dd.MM.yyyy')
-                        .format(dietPlan.createdAt.toDate()),
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 13,
-                    ),
-                  ),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildMealSection('Kahvaltı', dietPlan.breakfast,
-                              dietPlan.breakfastTime),
-                          Divider(height: 24),
-                          _buildMealSection('Öğle Yemeği', dietPlan.lunch,
-                              dietPlan.lunchTime),
-                          Divider(height: 24),
-                          _buildMealSection(
-                              'Ara Öğün', dietPlan.snack, dietPlan.snackTime),
-                          Divider(height: 24),
-                          _buildMealSection('Akşam Yemeği', dietPlan.dinner,
-                              dietPlan.dinnerTime),
-                          if (dietPlan.notes.isNotEmpty) ...[
-                            Divider(height: 24),
-                            Text(
-                              'Notlar:',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              dietPlan.notes,
-                              style: TextStyle(color: Colors.black87),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
+            return _buildDietPlanCard(dietPlan);
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildDietPlanCard(DietPlan dietPlan) {
+    final createdAt = dietPlan.createdAt.toDate();
+    final pdfService = PdfService();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(
+            color: Colors.grey.shade300,
+            width: 1.0,
+          ),
+          borderRadius: BorderRadius.circular(12.0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ExpansionTile(
+          title: Text(
+            dietPlan.title.isEmpty ? 'Diyet Listesi' : dietPlan.title,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          subtitle: Text(
+            DateFormat('dd.MM.yyyy').format(createdAt),
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: 13,
+            ),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(Icons.picture_as_pdf),
+                onPressed: () async {
+                  try {
+                    await pdfService.generateDietPlanPdf(dietPlan);
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('PDF oluşturulurken bir hata oluştu: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildMealSection(
+                      'Kahvaltı', dietPlan.breakfast, dietPlan.breakfastTime),
+                  Divider(height: 24),
+                  _buildMealSection(
+                      'Öğle Yemeği', dietPlan.lunch, dietPlan.lunchTime),
+                  Divider(height: 24),
+                  _buildMealSection(
+                      'Ara Öğün', dietPlan.snack, dietPlan.snackTime),
+                  Divider(height: 24),
+                  _buildMealSection(
+                      'Akşam Yemeği', dietPlan.dinner, dietPlan.dinnerTime),
+                  if (dietPlan.notes.isNotEmpty) ...[
+                    Divider(height: 24),
+                    Text(
+                      'Notlar:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      dietPlan.notes,
+                      style: TextStyle(color: Colors.black87),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

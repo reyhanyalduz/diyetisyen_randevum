@@ -1,10 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../models/appointment.dart';
 import '../services/appointment_service.dart';
-import '../utils/constants.dart';
 import '../services/client_service.dart';
-import '../models/user.dart';
 
 class AppointmentTable extends StatelessWidget {
   final List<Appointment> appointments;
@@ -70,7 +69,7 @@ class AppointmentTable extends StatelessWidget {
                       margin: EdgeInsets.symmetric(vertical: 4, horizontal: 16),
                       padding: EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: _getStatusColor(appointment.status),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
@@ -88,57 +87,73 @@ class AppointmentTable extends StatelessWidget {
                                 ),
                                 SizedBox(height: 4),
                                 Text(
-                                  "Durum: ${_getStatusText(appointment.status)}",
-                                  style: TextStyle(fontSize: 14),
-                                ),
-                                Text(
                                   "Danışan: $clientName",
                                   style: TextStyle(fontSize: 14),
                                 ),
+                                if (appointment.isCancelled) ...[
+                                  SizedBox(height: 4),
+                                  Text(
+                                    appointment.cancelledBy == 'dietitian'
+                                        ? "Diyetisyen tarafından iptal edildi"
+                                        : "Danışan tarafından iptal edildi",
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.red,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
-                          if (isDietitian)
+                          if (isDietitian && !appointment.isCancelled)
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (appointment.status == 'pending')
-                                  IconButton(
-                                    icon:
-                                        Icon(Icons.check, color: Colors.green),
-                                    onPressed: () async {
+                                IconButton(
+                                  icon: Icon(Icons.cancel, color: Colors.red),
+                                  onPressed: () async {
+                                    final confirmed = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: Text('Randevu İptali'),
+                                        content: Text(
+                                            'Bu randevuyu iptal etmek istediğinize emin misiniz?'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: Text('Vazgeç'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            child: Text('İptal Et'),
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: Colors.red,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+
+                                    if (confirmed == true) {
                                       try {
-                                        await appointmentService
-                                            .confirmAppointment(appointment.id);
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                              content:
-                                                  Text('Randevu onaylandı')),
-                                        );
-                                      } catch (e) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                              content: Text(
-                                                  'Randevu onaylanırken bir hata oluştu')),
-                                        );
-                                      }
-                                    },
-                                  ),
-                                if (appointment.status != 'cancelled')
-                                  IconButton(
-                                    icon: Icon(Icons.cancel, color: Colors.red),
-                                    onPressed: () async {
-                                      try {
-                                        await appointmentService
-                                            .cancelAppointment(appointment.id);
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                              content:
-                                                  Text('Randevu iptal edildi')),
-                                        );
+                                        if (appointment.id != null) {
+                                          await FirebaseFirestore.instance
+                                              .collection('appointments')
+                                              .doc(appointment.id!)
+                                              .update({
+                                            'isCancelled': true,
+                                            'cancelledBy': 'dietitian',
+                                          });
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                                content: Text(
+                                                    'Randevu iptal edildi')),
+                                          );
+                                        }
                                       } catch (e) {
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(
@@ -147,8 +162,9 @@ class AppointmentTable extends StatelessWidget {
                                                   'Randevu iptal edilirken bir hata oluştu')),
                                         );
                                       }
-                                    },
-                                  ),
+                                    }
+                                  },
+                                ),
                               ],
                             ),
                         ],
@@ -160,32 +176,6 @@ class AppointmentTable extends StatelessWidget {
         );
       },
     );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'pending':
-        return AppColors.color3.withOpacity(0.7);
-      case 'confirmed':
-        return Colors.green.withOpacity(0.2);
-      case 'cancelled':
-        return Colors.red.withOpacity(0.2);
-      default:
-        return AppColors.color3;
-    }
-  }
-
-  String _getStatusText(String status) {
-    switch (status) {
-      case 'pending':
-        return 'Beklemede';
-      case 'confirmed':
-        return 'Onaylandı';
-      case 'cancelled':
-        return 'İptal Edildi';
-      default:
-        return status;
-    }
   }
 
   Future<String> _getClientName(String clientId, ClientService clientService,

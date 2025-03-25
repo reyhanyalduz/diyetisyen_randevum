@@ -1,39 +1,51 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Appointment {
-  final String id;
+  final String? id;
   final String clientId;
   final String dietitianId;
   final DateTime dateTime;
-  final String status; // 'pending', 'confirmed', 'cancelled'
+  final bool isCompleted;
+  final bool isCancelled;
+  final String? cancelledBy; // 'client' veya 'dietitian'
 
   Appointment({
-    required this.id,
+    this.id,
     required this.clientId,
     required this.dietitianId,
     required this.dateTime,
-    required this.status,
+    this.isCompleted = false,
+    this.isCancelled = false,
+    this.cancelledBy,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'clientId': clientId,
       'dietitianId': dietitianId,
-      'dateTime': dateTime.toIso8601String(),
-      'status': status,
+      'dateTime': dateTime,
+      'isCompleted': isCompleted,
+      'isCancelled': isCancelled,
+      'cancelledBy': cancelledBy,
     };
   }
 
   factory Appointment.fromMap(Map<String, dynamic> map, String id) {
     return Appointment(
       id: id,
-      clientId: map['clientId'] as String,
-      dietitianId: map['dietitianId'] as String,
-      dateTime: DateTime.parse(map['dateTime'] as String),
-      status: map['status'] as String,
+      clientId: map['clientId'] ?? '',
+      dietitianId: map['dietitianId'] ?? '',
+      dateTime: map['dateTime'] is Timestamp
+          ? (map['dateTime'] as Timestamp).toDate()
+          : DateTime.parse(map['dateTime']),
+      isCompleted: map['isCompleted'] ?? false,
+      isCancelled: map['isCancelled'] ?? false,
+      cancelledBy: map['cancelledBy'],
     );
   }
 
   @override
   String toString() {
-    return 'Appointment{id: $id, clientId: $clientId, dietitianId: $dietitianId, dateTime: $dateTime, status: $status}';
+    return 'Appointment{id: $id, clientId: $clientId, dietitianId: $dietitianId, dateTime: $dateTime, isCompleted: $isCompleted, isCancelled: $isCancelled, cancelledBy: $cancelledBy}';
   }
 }

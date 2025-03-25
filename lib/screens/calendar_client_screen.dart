@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
+
 import '../models/appointment.dart';
 import '../models/user.dart';
 import '../screens/calendar_dietitian_screen.dart';
@@ -101,10 +103,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _loadAppointments() {
     _appointmentsStream?.listen((appointments) {
       if (mounted) {
+        final now = DateTime.now();
+        final startOfToday = DateTime(now.year, now.month, now.day);
+
+        // Bugün ve sonrasındaki randevuları filtrele ve tarihe göre sırala
+        final filteredAndSortedAppointments = appointments
+            .where((appointment) => appointment.dateTime
+                .isAfter(startOfToday.subtract(Duration(seconds: 1))))
+            .toList()
+          ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
         setState(() {
-          _appointments = appointments;
+          _appointments = filteredAndSortedAppointments;
           _events = {};
-          for (var appointment in appointments) {
+          for (var appointment in _appointments) {
             final date = DateTime(
               appointment.dateTime.year,
               appointment.dateTime.month,
@@ -181,7 +193,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           clientId: client.uid,
           dietitianId: dietitianId,
           dateTime: appointmentTime,
-          status: 'pending',
         );
 
         // addAppointment metodunu kullan (bu metod bildirimleri de ayarlayacak)
@@ -393,7 +404,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           child: Text('Randevu Al',
                               style: TextStyle(color: Colors.white)),
                           style: ButtonStyle(
-                            backgroundColor: MaterialStateProperty.all(
+                            backgroundColor: WidgetStateProperty.all(
                               hasDietitian ? AppColors.color1 : Colors.grey,
                             ),
                           ),
@@ -436,57 +447,121 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       itemCount: _appointments.length,
                       itemBuilder: (context, index) {
                         final appointment = _appointments[index];
-                        return Container(
-                          margin: EdgeInsets.symmetric(
-                              vertical: 4.0, horizontal: 8.0),
-                          padding: EdgeInsets.all(12.0),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.color1),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '${appointment.dateTime.day}/${appointment.dateTime.month}/${appointment.dateTime.year} ${appointment.dateTime.hour}:${appointment.dateTime.minute.toString().padLeft(2, '0')}',
-                                style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.w500),
-                              ),
-                              Text(
-                                _getStatusText(appointment.status),
-                                style: TextStyle(
-                                  color: appointment.status == 'confirmed'
-                                      ? Colors.green
-                                      : appointment.status == 'cancelled'
-                                          ? Colors.red
-                                          : Colors.orange,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
+                        return _buildAppointmentCard(appointment);
                       },
                     ),
                   ],
+                  SizedBox(height: 50),
                 ],
               ),
             ),
     );
   }
 
-  // Helper method to convert status to Turkish
-  String _getStatusText(String status) {
-    switch (status) {
-      case 'pending':
-        return 'Beklemede';
-      case 'confirmed':
-        return 'Onaylandı';
-      case 'cancelled':
-        return 'İptal Edildi';
-      default:
-        return status;
+  Widget _buildAppointmentCard(Appointment appointment) {
+    final isTextFaded = appointment.isCancelled;
+    final textColor = isTextFaded ? Colors.grey : Colors.black;
+
+    return Card(
+      elevation: 1,
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  DateFormat('dd MMMM yyyy, HH:mm')
+                      .format(appointment.dateTime),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: textColor,
+                  ),
+                ),
+                if (!appointment.isCancelled)
+                  TextButton(
+                    onPressed: () => _cancelAppointment(appointment),
+                    child: Text(
+                      'İptal Et',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 14,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      minimumSize: Size(80, 36),
+                    ),
+                  ),
+              ],
+            ),
+            if (appointment.isCancelled) ...[
+              SizedBox(height: 8),
+              Text(
+                appointment.cancelledBy == 'client'
+                    ? 'Bu randevuyu iptal ettiniz'
+                    : 'Diyetisyeniniz bu randevuyu iptal etti',
+                style: TextStyle(
+                  color: Colors.red[300],
+                  fontSize: 14,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _cancelAppointment(Appointment appointment) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Randevu İptali'),
+        content: Text('Randevuyu iptal etmek istediğinize emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('İptal Et'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('appointments')
+            .doc(appointment.id)
+            .update({
+          'isCancelled': true,
+          'cancelledBy': 'client',
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Randevu başarıyla iptal edildi')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Randevu iptal edilirken bir hata oluştu'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

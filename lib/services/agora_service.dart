@@ -211,9 +211,36 @@ class AgoraService {
     await _firestore.collection('video_calls').doc(channelName).update({
       'status': status,
       'updatedAt': FieldValue.serverTimestamp(),
-      'dietitianJoined': false,
-      'clientJoined': false
     });
+  }
+
+  // Handle user leaving the call
+  Future<void> handleUserLeave(String channelName, bool isDietitian) async {
+    try {
+      final docRef = _firestore.collection('video_calls').doc(channelName);
+      final doc = await docRef.get();
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        final statusField = isDietitian ? 'dietitianJoined' : 'clientJoined';
+
+        // Update the specific user's join status
+        await docRef.update({
+          statusField: false,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        // If both users have left, mark the call as completed
+        if (!data['dietitianJoined'] && !data['clientJoined']) {
+          await docRef.update({
+            'status': 'completed',
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+    } catch (e) {
+      print('Error handling user leave: $e');
+    }
   }
 
   // Request permissions for camera and microphone

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import '../utils/constants.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -14,6 +15,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
+  final _notificationService = NotificationService();
   String _selectedUserType = 'client';
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -36,7 +38,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               child: Center(
                 child: Padding(
                   padding: EdgeInsets.all(32),
-                  child: Image.asset('images/dietitian.png',
+                  child: Image.asset('assets/images/dietitian.png',
                       color: AppColors.color1),
                 ),
               ),
@@ -313,7 +315,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       try {
         final authService = AuthService();
-        await authService.signUp(
+        final user = await authService.signUp(
           _emailController.text,
           _passwordController.text,
           _selectedUserType == 'client' ? UserType.client : UserType.dietitian,
@@ -321,6 +323,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
           170,
           60.0,
         );
+
+        if (user != null) {
+          // Save FCM token for notifications
+          await _notificationService.saveToken(user.uid);
+        }
 
         if (!mounted) return;
         Navigator.pushReplacementNamed(

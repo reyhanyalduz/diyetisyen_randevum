@@ -2,7 +2,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/date_symbol_data_local.dart';
-
 import '../screens/profile_dietitian.dart';
 import '../screens/video_call_screen.dart';
 import 'firebase_options.dart';

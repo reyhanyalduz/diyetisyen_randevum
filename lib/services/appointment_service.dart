@@ -18,7 +18,6 @@ class AppointmentService {
         clientId: clientId,
         dietitianId: dietitianId,
         dateTime: dateTime,
-        status: 'pending',
       );
 
       await _firestore
@@ -36,6 +35,7 @@ class AppointmentService {
     return _firestore
         .collection(_collection)
         .where('clientId', isEqualTo: userId)
+        .orderBy('dateTime', descending: false)
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) =>

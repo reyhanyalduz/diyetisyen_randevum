@@ -19,6 +19,9 @@ dependencies:
   agora_rtc_engine: ^6.2.6
   permission_handler: ^10.4.3
   agora_token_service: ^0.1.2
+  pdf: ^3.10.7
+  path_provider: ^2.1.2
+  open_file: ^3.3.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -26,4 +29,11 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - images/
+    - assets/images/
+    - assets/fonts/
+  fonts:
+    - family: OpenSans
+      fonts:
+        - asset: assets/fonts/OpenSans-Regular.ttf
+        - asset: assets/fonts/OpenSans-Bold.ttf
+          weight: 700

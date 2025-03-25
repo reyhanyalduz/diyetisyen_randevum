@@ -39,8 +39,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   @override
   void dispose() {
     try {
-      // Görüşmeden ayrılırken durumu güncelle
-      _agoraService.updateMeetingStatus(widget.channelName, 'completed');
+      // Kullanıcı görüşmeden ayrılırken durumu güncelle
+      _agoraService.handleUserLeave(widget.channelName, widget.isDietitian);
 
       // clear users
       _engine.leaveChannel();
@@ -291,11 +291,27 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     _engine.muteLocalAudioStream(_muted);
   }
 
-  void _onToggleVideoDisabled() {
-    setState(() {
-      _videoDisabled = !_videoDisabled;
-    });
-    _engine.muteLocalVideoStream(_videoDisabled);
+  void _onToggleVideoDisabled() async {
+    try {
+      setState(() {
+        _videoDisabled = !_videoDisabled;
+      });
+
+      if (_videoDisabled) {
+        // Sadece kamerayı devre dışı bırak
+        await _engine.muteLocalVideoStream(true);
+        await _engine.enableLocalVideo(false);
+      } else {
+        // Sadece kamerayı etkinleştir
+        await _engine.muteLocalVideoStream(false);
+        await _engine.enableLocalVideo(true);
+      }
+    } catch (e) {
+      print('Error toggling video: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Kamera durumu değiştirilemedi: $e')),
+      );
+    }
   }
 
   void _onCallEnd(BuildContext context) {

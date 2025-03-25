@@ -4,6 +4,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../services/auth_service.dart';
+
 // This function must be top-level (not nested in a class)
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -61,6 +63,16 @@ class NotificationService {
     // Handle foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       _handleMessage(message);
+    });
+
+    // Listen for token refresh
+    _firebaseMessaging.onTokenRefresh.listen((String token) async {
+      print('FCM Token refreshed: $token');
+      // Get current user and update token
+      final currentUser = await AuthService().getCurrentUser();
+      if (currentUser != null) {
+        await saveToken(currentUser.uid);
+      }
     });
 
     // Get FCM token

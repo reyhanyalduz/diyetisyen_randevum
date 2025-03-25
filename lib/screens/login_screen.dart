@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import '../utils/constants.dart';
 
 class LoginPage extends StatefulWidget {
@@ -14,6 +15,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final AuthService _authService = AuthService();
+  final NotificationService _notificationService = NotificationService();
   bool _obscurePassword = true;
 
   Future<void> _login() async {
@@ -24,6 +26,9 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (user != null) {
+        // Save FCM token for notifications
+        await _notificationService.saveToken(user.uid);
+
         if (user.userType == UserType.client) {
           Navigator.pushReplacementNamed(context, '/clientHome');
         } else {
@@ -60,7 +65,7 @@ class _LoginPageState extends State<LoginPage> {
                 child: Padding(
                   padding: EdgeInsets.all(32),
                   child: Image.asset(
-                    'images/dietitian.png',
+                    'assets/images/dietitian.png',
                     color: AppColors.color1,
                   ),
                 ),
