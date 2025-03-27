@@ -10,6 +10,8 @@ import '../services/auth_service.dart';
 import '../services/dietitian_service.dart';
 import '../services/pdf_service.dart';
 import '../widgets/info_card_widget.dart';
+import '../widgets/qr_display_widget.dart';
+import '../widgets/qr_scanner_widget.dart';
 import '../widgets/tag_section_widget.dart';
 
 class ClientProfileScreen extends StatefulWidget {
@@ -444,6 +446,20 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
               tooltip: 'Video Görüşmesine Katıl',
             ),
           IconButton(
+            icon: Icon(Icons.qr_code),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => QRDisplayWidget(
+                    data: _client.uid,
+                    isDietitian: false,
+                  ),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: Icon(Icons.exit_to_app),
             onPressed: () async {
               await AuthService().signOut();
@@ -560,8 +576,19 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                               ],
                             )
                           : Text('Diyetisyen seçilmedi'),
-                      trailing: Icon(Icons.edit),
-                      onTap: _changeDietitian,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.qr_code_scanner),
+                            onPressed: _scanQrCode,
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.edit),
+                            onPressed: _changeDietitian,
+                          ),
+                        ],
+                      ),
                     ),
                     SizedBox(height: 20),
                     //_buildTabSection(),
@@ -731,5 +758,41 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         ),
       ],
     );
+  }
+
+  void _scanQrCode() async {
+    try {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => QRViewExample(
+            onQrDetected: (String dietitianId) async {
+              // QR kod okunduğunda
+              try {
+                await _firestore
+                    .collection('clients')
+                    .doc(_client.uid)
+                    .update({'dietitianUid': dietitianId});
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Diyetisyen başarıyla eklendi')),
+                );
+
+                // Profil bilgilerini güncelle
+                _loadSelectedDietitian();
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Bir hata oluştu: $e')),
+                );
+              }
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('QR kod taranamadı: $e')),
+      );
+    }
   }
 }

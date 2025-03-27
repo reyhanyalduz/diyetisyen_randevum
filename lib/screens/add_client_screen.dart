@@ -252,7 +252,7 @@ class _AddClientScreenState extends State<AddClientScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Mevcut Danışanı Bağla'),
+        title: Text('Mevcut Danışanı E-Posta Adresiyle Bağla'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

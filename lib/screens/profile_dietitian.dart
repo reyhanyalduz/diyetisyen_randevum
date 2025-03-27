@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+
 import '../models/user.dart';
 import '../screens/add_client_screen.dart';
 import '../screens/client_detail_screen.dart';
 import '../services/auth_service.dart';
 import '../services/client_service.dart';
 import '../utils/constants.dart';
+import '../widgets/qr_display_widget.dart';
+import '../widgets/qr_scanner_widget.dart';
 
 class DietitianProfileScreen extends StatefulWidget {
   final AppUser user;
@@ -53,6 +56,20 @@ class _DietitianProfileScreenState extends State<DietitianProfileScreen> {
         title: Text('Profil', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
+            icon: Icon(Icons.qr_code),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => QRDisplayWidget(
+                    data: widget.user.uid,
+                    isDietitian: true,
+                  ),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: Icon(Icons.logout),
             onPressed: () async {
               await AuthService().signOut();
@@ -77,22 +94,68 @@ class _DietitianProfileScreenState extends State<DietitianProfileScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildSectionTitle('Danışanlarım'),
-                    TextButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                AddClientScreen(dietitianUid: widget.user.uid),
-                          ),
-                        ).then((result) {
-                          if (result == true) {
-                            _loadClients();
-                          }
-                        });
-                      },
-                      icon: Icon(Icons.person_add, size: 16),
-                      label: Text('Danışan Ekle'),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.qr_code_scanner),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => QRViewExample(
+                                  onQrDetected: (String clientId) async {
+                                    try {
+                                      await _clientService.addClientToDietitian(
+                                        clientId: clientId,
+                                        dietitianId: widget.user.uid,
+                                      );
+
+                                      if (mounted) {
+                                        _loadClients();
+                                      }
+
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  'Danışan başarıyla eklendi')),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content:
+                                                  Text('Bir hata oluştu: $e')),
+                                        );
+                                      }
+                                    }
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        TextButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AddClientScreen(
+                                    dietitianUid: widget.user.uid),
+                              ),
+                            ).then((result) {
+                              if (result == true) {
+                                _loadClients();
+                              }
+                            });
+                          },
+                          icon: Icon(Icons.person_add, size: 16),
+                          label: Text('Danışan Ekle'),
+                        ),
+                      ],
                     ),
                   ],
                 ),

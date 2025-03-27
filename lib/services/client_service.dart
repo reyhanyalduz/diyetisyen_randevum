@@ -39,4 +39,21 @@ class ClientService {
       'dietitianUid': dietitianUid,
     });
   }
+
+  Future<void> addClientToDietitian({
+    required String clientId,
+    required String dietitianId,
+  }) async {
+    try {
+      await _firestore.collection('clients').doc(clientId).update({
+        'dietitianUid': dietitianId,
+      });
+      await _firestore.collection('users').doc(clientId).update({
+        'dietitianUid': dietitianId,
+      });
+    } catch (e) {
+      print('Error adding client to dietitian: $e');
+      throw e;
+    }
+  }
 }
