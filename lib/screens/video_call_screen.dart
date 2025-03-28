@@ -1,8 +1,6 @@
 import 'dart:async';
-
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
-
 import '../services/agora_service.dart';
 
 class VideoCallScreen extends StatefulWidget {

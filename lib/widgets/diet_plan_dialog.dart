@@ -31,11 +31,6 @@ class _DietPlanDialogState extends State<DietPlanDialog> {
   final _dinnerTimeController = TextEditingController();
   final _notesController = TextEditingController();
 
-  TimeOfDay? _breakfastTime;
-  TimeOfDay? _lunchTime;
-  TimeOfDay? _snackTime;
-  TimeOfDay? _dinnerTime;
-
   @override
   void initState() {
     super.initState();

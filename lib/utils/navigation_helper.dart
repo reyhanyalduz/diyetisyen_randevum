@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../screens/video_call_screen.dart';
 
 extension NavigationHelper on BuildContext {

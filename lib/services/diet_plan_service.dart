@@ -3,6 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/diet_plan.dart';
 
 class DietPlanService {
+  static final DietPlanService _instance = DietPlanService._internal();
+  factory DietPlanService() => _instance;
+  DietPlanService._internal();
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<List<DietPlan>> getDietPlansForClient(String clientId) async {
@@ -45,5 +49,20 @@ class DietPlanService {
 
   Future<void> deleteDietPlan(String dietPlanId) async {
     await _firestore.collection('dietplans').doc(dietPlanId).delete();
+  }
+
+  Future<DocumentSnapshot> getDietPlan(String clientId) async {
+    final querySnapshot = await _firestore
+        .collection('dietplans')
+        .where('clientId', isEqualTo: clientId)
+        .orderBy('createdAt', descending: true)
+        .limit(1)
+        .get();
+
+    if (querySnapshot.docs.isEmpty) {
+      throw Exception('Diet plan not found');
+    }
+
+    return querySnapshot.docs.first;
   }
 }

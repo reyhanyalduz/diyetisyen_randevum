@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../models/user.dart';
 import '../screens/add_client_screen.dart';
 import '../screens/client_detail_screen.dart';

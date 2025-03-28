@@ -25,7 +25,6 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
   final ClientService _clientService = ClientService();
   final DietPlanService _dietPlanService = DietPlanService();
   final AgoraService _agoraService = AgoraService();
-  final PdfService _pdfService = PdfService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   Client? client;
   bool isLoading = true;

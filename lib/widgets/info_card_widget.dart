@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
+
 Widget InfoCard(String title, String value) {
   return Container(
     padding: EdgeInsets.all(10),

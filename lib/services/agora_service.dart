@@ -1,7 +1,6 @@
 import 'package:agora_token_service/agora_token_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:permission_handler/permission_handler.dart';
-
 import '../services/notification_service.dart';
 
 class AgoraService {

@@ -1,8 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-
 import '../models/appointment.dart';
-import '../services/appointment_service.dart';
 import '../services/client_service.dart';
 
 class AppointmentTable extends StatelessWidget {
@@ -19,7 +17,6 @@ class AppointmentTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appointmentService = AppointmentService();
     final clientService = ClientService();
     final Map<String, String> _clientNameCache = {};
 

@@ -32,6 +32,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   List<Appointment> _appointments = [];
   final DietitianService _dietitianService = DietitianService();
   final Map<String, String> _dietitianNameCache = {};
+  Set<String> _bookedTimeSlots = {};
 
   @override
   void initState() {
@@ -42,6 +43,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     // İlk yükleme işlemlerini başlat
     _initializeData();
+    // Seçili gün için dolu randevuları yükle
+    _loadBookedTimeSlots(_selectedDay);
   }
 
   // Tüm veri yükleme işlemlerini tek bir yerde topla
@@ -138,19 +141,72 @@ class _CalendarScreenState extends State<CalendarScreen> {
       _selectedDay = selectedDay;
       _focusedDay = focusedDay;
     });
+
+    // Seçili gün için dolu randevuları getir
+    _loadBookedTimeSlots(selectedDay);
+  }
+
+  Future<void> _loadBookedTimeSlots(DateTime selectedDay) async {
+    if (_updatedClient?.dietitianUid == null) {
+      print('No dietitian assigned to client');
+      return;
+    }
+
+    try {
+      final startOfDay =
+          DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+      final endOfDay = startOfDay.add(Duration(days: 1));
+
+      print(
+          'Loading booked slots for dietitian: ${_updatedClient!.dietitianUid}');
+      print('Date range: ${startOfDay} to ${endOfDay}');
+
+      // Diyetisyenin tüm randevularını al
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('appointments')
+          .where('dietitianId', isEqualTo: _updatedClient!.dietitianUid)
+          .where('isCancelled', isEqualTo: false)
+          .get();
+
+      print('Total appointments for dietitian: ${querySnapshot.docs.length}');
+
+      setState(() {
+        _bookedTimeSlots = querySnapshot.docs
+            .map((doc) {
+              final DateTime dateTime =
+                  (doc.data()['dateTime'] as Timestamp).toDate();
+              // Sadece seçili güne ait randevuları al
+              if (dateTime.year == selectedDay.year &&
+                  dateTime.month == selectedDay.month &&
+                  dateTime.day == selectedDay.day) {
+                final timeString =
+                    '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+                print(
+                    'Found booked slot: $timeString for date: ${dateTime.toString()}');
+                return timeString;
+              }
+              return null;
+            })
+            .where((timeString) => timeString != null)
+            .cast<String>()
+            .toSet();
+      });
+
+      print('Total booked slots for selected day: ${_bookedTimeSlots.length}');
+      print('Booked slots: $_bookedTimeSlots');
+    } catch (e) {
+      print('Error loading booked time slots: $e');
+    }
   }
 
   Future<void> _bookAppointment() async {
-    // Yükleme göstergesi göster
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Use the updated client data if available, otherwise fall back to the original
       Client client = _updatedClient ?? (widget.currentUser as Client);
 
-      // Verify client has a dietitian assigned
       if (client.dietitianUid == null) {
         _showNoDietitianDialog();
         return;
@@ -181,8 +237,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
       String dietitianId = client.dietitianUid!;
       print('Using dietitianId for appointment: $dietitianId');
 
-      bool isAvailable =
-          await _appointmentService.isTimeAvailable(appointmentTime);
+      bool isAvailable = await _appointmentService.isTimeAvailable(
+          appointmentTime, dietitianId);
+      print(
+          'Time availability check for ${appointmentTime.toString()}: $isAvailable');
       if (isAvailable) {
         // Diyetisyen adını al
         String dietitianName = await _getDietitianName(dietitianId);
@@ -198,6 +256,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
         // addAppointment metodunu kullan (bu metod bildirimleri de ayarlayacak)
         await _appointmentService.addAppointment(appointment, dietitianName);
 
+        // Sayfayı yenile
+        await _initializeData();
+        // Dolu randevuları güncelle
+        await _loadBookedTimeSlots(_selectedDay);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Randevu başarıyla oluşturuldu')),
         );
@@ -212,7 +275,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         SnackBar(content: Text('Randevu oluşturulurken bir hata oluştu: $e')),
       );
     } finally {
-      // Yükleme göstergesini kapat
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -360,41 +422,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      DropdownButton<String>(
-                        value:
-                            '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
-                        items: [
-                          for (int hour = 10; hour <= 17; hour++)
-                            if (hour != 12) ...[
-                              DropdownMenuItem<String>(
-                                value: '${hour.toString().padLeft(2, '0')}:00',
-                                child: Text(
-                                    '${hour.toString().padLeft(2, '0')}:00'),
-                              ),
-                              DropdownMenuItem<String>(
-                                value: '${hour.toString().padLeft(2, '0')}:20',
-                                child: Text(
-                                    '${hour.toString().padLeft(2, '0')}:20'),
-                              ),
-                              DropdownMenuItem<String>(
-                                value: '${hour.toString().padLeft(2, '0')}:40',
-                                child: Text(
-                                    '${hour.toString().padLeft(2, '0')}:40'),
-                              ),
-                            ],
-                        ],
-                        onChanged: (String? newValue) {
-                          if (newValue != null) {
-                            List<String> parts = newValue.split(':');
-                            setState(() {
-                              _selectedTime = TimeOfDay(
-                                hour: int.parse(parts[0]),
-                                minute: int.parse(parts[1]),
-                              );
-                            });
-                          }
-                        },
-                      ),
+                      _buildTimeDropdown(),
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 16),
                         child: ElevatedButton(
@@ -563,6 +591,68 @@ class _CalendarScreenState extends State<CalendarScreen> {
         );
       }
     }
+  }
+
+  Widget _buildTimeDropdown() {
+    List<DropdownMenuItem<String>> items = [];
+
+    print('Building dropdown with booked slots: $_bookedTimeSlots');
+
+    for (int hour = 10; hour <= 17; hour++) {
+      if (hour != 12) {
+        for (var minute in [0, 20, 40]) {
+          final timeString =
+              '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+          final isBooked = _bookedTimeSlots.contains(timeString);
+          final now = DateTime.now();
+          final selectedDateTime = DateTime(
+            _selectedDay.year,
+            _selectedDay.month,
+            _selectedDay.day,
+            hour,
+            minute,
+          );
+          final isPast = selectedDateTime.isBefore(now);
+
+          print('Checking time slot: $timeString');
+          print('isBooked: $isBooked');
+          print('isPast: $isPast');
+          print('selectedDateTime: $selectedDateTime');
+          print('now: $now');
+
+          items.add(DropdownMenuItem<String>(
+            value: timeString,
+            enabled: !isBooked && !isPast,
+            child: Text(
+              timeString,
+              style: TextStyle(
+                color: isBooked || isPast ? Colors.grey[400] : Colors.black,
+                fontWeight: isBooked ? FontWeight.bold : FontWeight.normal,
+                decoration:
+                    isBooked ? TextDecoration.lineThrough : TextDecoration.none,
+              ),
+            ),
+          ));
+        }
+      }
+    }
+
+    return DropdownButton<String>(
+      value:
+          '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
+      items: items,
+      onChanged: (String? newValue) {
+        if (newValue != null) {
+          List<String> parts = newValue.split(':');
+          setState(() {
+            _selectedTime = TimeOfDay(
+              hour: int.parse(parts[0]),
+              minute: int.parse(parts[1]),
+            );
+          });
+        }
+      },
+    );
   }
 
   @override

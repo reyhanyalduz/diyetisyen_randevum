@@ -4,6 +4,7 @@ import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/client_service.dart';
 import '../utils/constants.dart';
+
 class AddClientScreen extends StatefulWidget {
   final String dietitianUid;
 

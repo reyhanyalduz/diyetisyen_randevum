@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
+
 Widget BuildDietList() {
   List<String> meals = [
     'Kahvaltı',

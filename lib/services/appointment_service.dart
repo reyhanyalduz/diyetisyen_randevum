@@ -44,13 +44,35 @@ class AppointmentService {
   }
 
   // Randevu saatinin müsait olup olmadığını kontrol etme
-  Future<bool> isTimeAvailable(DateTime dateTime) async {
-    final snapshot = await _firestore
-        .collection(_collection)
-        .where('dateTime', isEqualTo: dateTime.toIso8601String())
-        .get();
+  Future<bool> isTimeAvailable(DateTime dateTime, String dietitianId) async {
+    try {
+      // Seçilen günün başlangıcı ve sonu
+      final startOfDay = DateTime(dateTime.year, dateTime.month, dateTime.day);
+      final endOfDay = startOfDay.add(Duration(days: 1));
 
-    return snapshot.docs.isEmpty;
+      // Diyetisyenin o günkü tüm randevularını kontrol et
+      final snapshot = await _firestore
+          .collection(_collection)
+          .where('dietitianId', isEqualTo: dietitianId)
+          .where('dateTime', isGreaterThanOrEqualTo: startOfDay)
+          .where('dateTime', isLessThan: endOfDay)
+          .where('isCancelled', isEqualTo: false)
+          .get();
+
+      // Aynı saatte randevu var mı kontrol et
+      for (var doc in snapshot.docs) {
+        final appointmentTime = (doc.data()['dateTime'] as Timestamp).toDate();
+        if (appointmentTime.hour == dateTime.hour &&
+            appointmentTime.minute == dateTime.minute) {
+          return false; // Bu saatte randevu var
+        }
+      }
+
+      return true; // Bu saatte randevu yok
+    } catch (e) {
+      print('Error checking time availability: $e');
+      return false;
+    }
   }
 
   // Randevu iptal etme

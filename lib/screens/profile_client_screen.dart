@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../models/diet_plan.dart';
 import '../models/user.dart';
@@ -9,9 +8,11 @@ import '../services/agora_service.dart';
 import '../services/auth_service.dart';
 import '../services/dietitian_service.dart';
 import '../services/pdf_service.dart';
+import '../widgets/bmi_chart_widget.dart';
 import '../widgets/info_card_widget.dart';
 import '../widgets/qr_display_widget.dart';
 import '../widgets/qr_scanner_widget.dart';
+import '../widgets/diet_plan_widget.dart';
 import '../widgets/tag_section_widget.dart';
 
 class ClientProfileScreen extends StatefulWidget {
@@ -47,20 +48,27 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   }
 
   Future<void> _loadSelectedDietitian() async {
+    if (!mounted) return;
+
     try {
       if (_client.dietitianUid != null) {
-        print('Attempting to load dietitian with ID: ${_client.dietitianUid}');
-        _selectedDietitian =
+        final dietitian =
             await _dietitianService.getDietitianById(_client.dietitianUid!);
-        print('Loaded dietitian: ${_selectedDietitian?.name ?? "Not found"}');
-        if (mounted) setState(() {});
-      } else {
-        print('No dietitianUid available to load');
+        if (mounted &&
+            dietitian != null &&
+            dietitian.uid != _selectedDietitian?.uid) {
+          setState(() {
+            _selectedDietitian = dietitian;
+          });
+        }
+      } else if (_selectedDietitian != null) {
+        setState(() {
+          _selectedDietitian = null;
+        });
       }
     } catch (e) {
       print('Error loading dietitian: $e');
-      // If there's an error, set _selectedDietitian to null to avoid UI issues
-      if (mounted) {
+      if (mounted && _selectedDietitian != null) {
         setState(() {
           _selectedDietitian = null;
         });
@@ -278,10 +286,32 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         throw 'Kilo 30-300 kg arasında olmalıdır';
       }
 
-      await _firestore.collection('clients').doc(_client.uid).update({
+      // VKİ hesaplama
+      double newBMI = newWeight / ((newHeight / 100) * (newHeight / 100));
+
+      // Batch işlemi başlat
+      WriteBatch batch = _firestore.batch();
+
+      // Kullanıcı bilgilerini güncelle
+      batch.update(_firestore.collection('clients').doc(_client.uid), {
         'height': newHeight,
         'weight': newWeight,
       });
+
+      // VKİ geçmişine yeni kayıt ekle
+      batch.set(
+        _firestore.collection('bmi_history').doc(),
+        {
+          'clientId': _client.uid,
+          'height': newHeight,
+          'weight': newWeight,
+          'bmi': newBMI,
+          'date': FieldValue.serverTimestamp(),
+        },
+      );
+
+      // Batch işlemini gerçekleştir
+      await batch.commit();
 
       setState(() {
         _client = Client(
@@ -434,7 +464,6 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentWidth = MediaQuery.of(context).size.width;
     return Scaffold(
       appBar: AppBar(
         title: Text('Profilim'),
@@ -480,27 +509,25 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
 
             var clientData = snapshot.data!.data() as Map<String, dynamic>;
 
-            // Debug print to check if dietitianUid exists in Firebase data
-            print('Firebase client data: $clientData');
-            print('DietitianUid from Firebase: ${clientData['dietitianUid']}');
+            // Instead of directly updating state, check if we need to schedule an update
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (_client.uid != clientData['uid'] ||
+                  _client.height != clientData['height'] ||
+                  _client.weight != clientData['weight'] ||
+                  _client.dietitianUid != clientData['dietitianUid']) {
+                setState(() {
+                  _client = AppUser.fromMap(clientData) as Client;
+                  _heightController.text = _client.height.toString();
+                  _weightController.text = _client.weight.toString();
+                });
 
-            _client = AppUser.fromMap(clientData) as Client;
-            _heightController.text = _client.height.toString();
-            _weightController.text = _client.weight.toString();
-
-            // Debug print to check if dietitianUid is properly loaded into the Client object
-            print('Client object dietitianUid: ${_client.dietitianUid}');
-
-            // Diyetisyen bilgisini güncelle
-            if (_client.dietitianUid != null &&
-                (_selectedDietitian?.uid != _client.dietitianUid)) {
-              print('Loading dietitian with ID: ${_client.dietitianUid}');
-              _loadSelectedDietitian();
-            } else if (_client.dietitianUid == null) {
-              print(
-                  'No dietitian selected, setting _selectedDietitian to null');
-              _selectedDietitian = null;
-            }
+                // Diyetisyen bilgisini güncelle
+                if (_client.dietitianUid != null &&
+                    (_selectedDietitian?.uid != _client.dietitianUid)) {
+                  _loadSelectedDietitian();
+                }
+              }
+            });
 
             return SingleChildScrollView(
               child: Padding(
@@ -549,6 +576,12 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                       ],
                     ),
                     SizedBox(height: 20),
+                    Container(
+                      height: 200,
+                      padding: EdgeInsets.all(16),
+                      child: BMIChartWidget(clientId: _client.uid),
+                    ),
+                    SizedBox(height: 20),
                     TagSection(
                       context: context,
                       title: 'Alerjiler',
@@ -593,170 +626,15 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                     SizedBox(height: 20),
                     //_buildTabSection(),
                     SizedBox(height: 20),
-                    _buildDietPlansSection(),
+                    DietPlanWidget(
+                      clientId: _client.uid,
+                      isProfileView: true,
+                    ),
                   ],
                 ),
               ),
             );
           }),
-    );
-  }
-
-  Widget _buildDietPlansSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Text(
-            'Diyet Listeleri',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          itemCount: _dietPlans.length,
-          itemBuilder: (context, index) {
-            final dietPlan = _dietPlans[index];
-            return _buildDietPlanCard(dietPlan);
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDietPlanCard(DietPlan dietPlan) {
-    final createdAt = dietPlan.createdAt.toDate();
-    final pdfService = PdfService();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(
-            color: Colors.grey.shade300,
-            width: 1.0,
-          ),
-          borderRadius: BorderRadius.circular(12.0),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 4,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: ExpansionTile(
-          title: Text(
-            dietPlan.title.isEmpty ? 'Diyet Listesi' : dietPlan.title,
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          subtitle: Text(
-            DateFormat('dd.MM.yyyy').format(createdAt),
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 13,
-            ),
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: Icon(Icons.picture_as_pdf),
-                onPressed: () async {
-                  try {
-                    await pdfService.generateDietPlanPdf(dietPlan);
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('PDF oluşturulurken bir hata oluştu: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                },
-              ),
-            ],
-          ),
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildMealSection(
-                      'Kahvaltı', dietPlan.breakfast, dietPlan.breakfastTime),
-                  Divider(height: 24),
-                  _buildMealSection(
-                      'Öğle Yemeği', dietPlan.lunch, dietPlan.lunchTime),
-                  Divider(height: 24),
-                  _buildMealSection(
-                      'Ara Öğün', dietPlan.snack, dietPlan.snackTime),
-                  Divider(height: 24),
-                  _buildMealSection(
-                      'Akşam Yemeği', dietPlan.dinner, dietPlan.dinnerTime),
-                  if (dietPlan.notes.isNotEmpty) ...[
-                    Divider(height: 24),
-                    Text(
-                      'Notlar:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      dietPlan.notes,
-                      style: TextStyle(color: Colors.black87),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMealSection(String title, String content, String time) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '$title:',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            Text(
-              time,
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 8),
-        Text(
-          content,
-          style: TextStyle(color: Colors.black87),
-        ),
-      ],
     );
   }
 

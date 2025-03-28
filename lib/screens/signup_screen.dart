@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
@@ -320,8 +319,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
           _passwordController.text,
           _selectedUserType == 'client' ? UserType.client : UserType.dietitian,
           _nameController.text,
-          170,
-          60.0,
+          0,
+          0.0,
         );
 
         if (user != null) {
