@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+
 import '../services/auth_service.dart';
 
 // This function must be top-level (not nested in a class)
@@ -37,55 +38,86 @@ class NotificationService {
 
     const settings =
         InitializationSettings(android: androidSettings, iOS: iosSettings);
-    await _notifications.initialize(settings,
-        onDidReceiveNotificationResponse: (response) {
-      print('Notification tapped: ${response.payload}');
-    });
+    await _notifications.initialize(settings);
     print('Notification service initialized successfully');
 
-    // Initialize Firebase Messaging for video call notifications
+    // Initialize Firebase Messaging
     await _initializeFirebaseMessaging();
   }
 
-  // Initialize Firebase Messaging
   Future<void> _initializeFirebaseMessaging() async {
-    // Request permission for notifications
-    await _firebaseMessaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    try {
+      // Request permission for notifications
+      NotificationSettings settings =
+          await _firebaseMessaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
+      print('User granted permission: ${settings.authorizationStatus}');
 
-    // Handle background messages
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-    // Handle foreground messages
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      _handleMessage(message);
-    });
-
-    // Listen for token refresh
-    _firebaseMessaging.onTokenRefresh.listen((String token) async {
-      print('FCM Token refreshed: $token');
-      // Get current user and update token
-      final currentUser = await AuthService().getCurrentUser();
-      if (currentUser != null) {
-        await saveToken(currentUser.uid);
+      if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        print('WARNING: Notification permissions were denied');
+        // TODO: Show a dialog explaining why notifications are important
       }
-    });
 
-    // Get FCM token
-    final token = await _firebaseMessaging.getToken();
-    print('FCM Token: $token');
+      // Get FCM token
+      String? token = await _firebaseMessaging.getToken();
+      print('FCM Token: $token');
+
+      if (token == null) {
+        print('ERROR: Failed to get FCM token');
+        return;
+      }
+
+      // Handle background messages
+      FirebaseMessaging.onBackgroundMessage(
+          _firebaseMessagingBackgroundHandler);
+
+      // Handle foreground messages
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        print('Got a message whilst in the foreground!');
+        print('Message data: ${message.data}');
+        print('Message notification: ${message.notification?.title}');
+        _handleMessage(message);
+      });
+
+      // Listen for token refresh
+      _firebaseMessaging.onTokenRefresh.listen((String token) async {
+        print('FCM Token refreshed: $token');
+        final currentUser = await AuthService().getCurrentUser();
+        if (currentUser != null) {
+          await saveToken(currentUser.uid);
+        }
+      });
+
+      // Set foreground notification presentation options
+      await _firebaseMessaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    } catch (e) {
+      print('ERROR initializing Firebase Messaging: $e');
+    }
   }
 
-  // Save FCM token to Firestore for the user
   Future<void> saveToken(String userId) async {
-    final token = await _firebaseMessaging.getToken();
-    if (token != null) {
-      await _firestore.collection('users').doc(userId).update({
-        'fcmToken': token,
-      });
+    try {
+      final token = await _firebaseMessaging.getToken();
+      if (token != null) {
+        print('Saving FCM token for user $userId: $token');
+        await _firestore.collection('users').doc(userId).update({
+          'fcmToken': token,
+          'lastTokenUpdate': FieldValue.serverTimestamp(),
+          'notificationsEnabled': true,
+        });
+      } else {
+        print('ERROR: Failed to get FCM token for saving');
+      }
+    } catch (e) {
+      print('ERROR saving FCM token: $e');
     }
   }
 
@@ -110,26 +142,40 @@ class NotificationService {
     required String body,
     required String channelName,
   }) async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'video_call_channel',
-      'Video Call Notifications',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: true,
-    );
+    try {
+      const AndroidNotificationDetails androidPlatformChannelSpecifics =
+          AndroidNotificationDetails(
+        'video_call_channel',
+        'Video Call Notifications',
+        importance: Importance.max,
+        priority: Priority.high,
+        showWhen: true,
+        enableVibration: true,
+        playSound: true,
+        sound: RawResourceAndroidNotificationSound('notification_sound'),
+      );
 
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-    );
+      const NotificationDetails platformChannelSpecifics = NotificationDetails(
+        android: androidPlatformChannelSpecifics,
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          sound: 'notification_sound.aiff',
+        ),
+      );
 
-    await _notifications.show(
-      1, // Different notification ID for video calls
-      title,
-      body,
-      platformChannelSpecifics,
-      payload: channelName,
-    );
+      await _notifications.show(
+        1,
+        title,
+        body,
+        platformChannelSpecifics,
+        payload: channelName,
+      );
+      print('Local notification shown successfully');
+    } catch (e) {
+      print('Error showing local notification: $e');
+    }
   }
 
   // Method to notify a user about a video call
@@ -138,24 +184,57 @@ class NotificationService {
     required String senderName,
     required String channelName,
   }) async {
+    print('\n=== NOTIFICATION SERVICE DEBUG ===');
+    print('notifyUserAboutVideoCall STARTED');
+    print('Parameters:');
+    print('- receiverUserId: $receiverUserId');
+    print('- senderName: $senderName');
+    print('- channelName: $channelName');
+
     try {
-      // Get receiver's FCM token
+      // Get receiver's document
       final receiverDoc =
           await _firestore.collection('users').doc(receiverUserId).get();
-      final receiverToken = receiverDoc.data()?['fcmToken'];
+      print('Receiver document exists: ${receiverDoc.exists}');
 
-      if (receiverToken != null) {
-        // For this implementation, we'll just create a local notification
-        // In a production app, you would use a server to send FCM notifications
-        showVideoCallNotification(
-          title: 'Gelen Video Görüşmesi',
-          body: '$senderName sizinle görüşmek istiyor',
-          channelName: channelName,
-        );
+      if (!receiverDoc.exists) {
+        print('ERROR: Receiver document not found');
+        return;
       }
+
+      final receiverData = receiverDoc.data();
+      print('Receiver data: $receiverData');
+
+      // Check if notifications are enabled
+      final notificationsEnabled =
+          receiverData?['notificationsEnabled'] ?? true;
+      if (!notificationsEnabled) {
+        print('WARNING: Notifications are disabled for this user');
+        return;
+      }
+
+      final receiverToken = receiverData?['fcmToken'];
+      print('Receiver FCM token: $receiverToken');
+
+      if (receiverToken == null) {
+        print('ERROR: No FCM token found for receiver');
+        return;
+      }
+
+      // Show local notification
+      await showVideoCallNotification(
+        title: 'Gelen Video Görüşmesi',
+        body: '$senderName sizinle görüşmek istiyor',
+        channelName: channelName,
+      );
+      print('Local notification shown successfully');
+
+      // TODO: Implement FCM notification sending through your backend server
+      // For now, we're only showing local notifications
     } catch (e) {
-      print('Error notifying user about video call: $e');
+      print('ERROR in notifyUserAboutVideoCall: $e');
     }
+    print('=== NOTIFICATION SERVICE DEBUG END ===\n');
   }
 
   Future<void> scheduleAppointmentReminder({

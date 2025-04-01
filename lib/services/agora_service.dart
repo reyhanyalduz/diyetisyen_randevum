@@ -1,6 +1,7 @@
 import 'package:agora_token_service/agora_token_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:permission_handler/permission_handler.dart';
+
 import '../services/notification_service.dart';
 
 class AgoraService {
@@ -35,46 +36,68 @@ class AgoraService {
   // In a production environment, your token should be generated on a secure server
   Future<String> createMeeting(String dietitianUid, String clientUid) async {
     try {
-      // Generate a channel name based on the users involved - Daha basit bir kanal adı kullan
       String channelName = "${dietitianUid}_${clientUid}";
-
+      print('=== Video Call Creation Debug Info ===');
       print('Creating meeting with channel name: $channelName');
+      print('Dietitian UID: $dietitianUid');
+      print('Client UID: $clientUid');
 
-      // Önce mevcut görüşmeleri tamamlanmış olarak işaretle
+      // Check if dietitian exists
+      DocumentSnapshot dietitianDoc =
+          await _firestore.collection('users').doc(dietitianUid).get();
+      if (!dietitianDoc.exists) {
+        print('ERROR: Dietitian document not found');
+        throw Exception('Dietitian document not found');
+      }
+
+      // Check if client exists
+      DocumentSnapshot clientDoc =
+          await _firestore.collection('users').doc(clientUid).get();
+      if (!clientDoc.exists) {
+        print('ERROR: Client document not found');
+        throw Exception('Client document not found');
+      }
+
+      // Check if client has notifications enabled
+      final clientData = clientDoc.data() as Map<String, dynamic>?;
+      final notificationsEnabled = clientData?['notificationsEnabled'] ?? true;
+      if (!notificationsEnabled) {
+        print('WARNING: Notifications are disabled for client');
+        // Continue with call creation even if notifications are disabled
+      }
+
       await _completeExistingMeetings(dietitianUid, clientUid);
 
-      // Save the meeting details to Firestore
+      // Create video call document
       await _firestore.collection('video_calls').doc(channelName).set({
         'dietitianUid': dietitianUid,
         'clientUid': clientUid,
         'channelName': channelName,
         'createdAt': FieldValue.serverTimestamp(),
         'status': 'created',
-        'dietitianJoined':
-            true, // Diyetisyen görüşmeyi başlattığında otomatik olarak katılmış sayılır
+        'dietitianJoined': false,
         'clientJoined': false,
         'callStartTime': FieldValue.serverTimestamp(),
       });
+      print('Video call document created in Firestore');
 
-      // Get dietitian name for notification
-      DocumentSnapshot dietitianDoc =
-          await _firestore.collection('users').doc(dietitianUid).get();
-      if (dietitianDoc.exists) {
-        String dietitianName = dietitianDoc['name'] ?? 'Diyetisyen';
+      String dietitianName = dietitianDoc['name'] ?? 'Diyetisyen';
+      print('Dietitian name for notification: $dietitianName');
 
-        // Send notification to client
+      // Send notification to client if notifications are enabled
+      if (notificationsEnabled) {
+        print('Attempting to send notification to client...');
         await _notificationService.notifyUserAboutVideoCall(
           receiverUserId: clientUid,
           senderName: dietitianName,
           channelName: channelName,
         );
-
-        print('Notification sent to client: $clientUid');
+        print('Notification service call completed');
       }
 
       return channelName;
     } catch (e) {
-      print('Error creating meeting: $e');
+      print('ERROR in createMeeting: $e');
       rethrow;
     }
   }
@@ -120,8 +143,6 @@ class AgoraService {
             .collection('video_calls')
             .where('clientUid', isEqualTo: uid)
             .where('status', isEqualTo: 'created')
-            .where('dietitianJoined',
-                isEqualTo: true) // Diyetisyen katılmış olmalı
             .get();
       }
 
@@ -133,7 +154,7 @@ class AgoraService {
         docs.sort((a, b) {
           var aTime = a['createdAt'] as Timestamp;
           var bTime = b['createdAt'] as Timestamp;
-          return bTime.compareTo(aTime); // Descending order
+          return bTime.compareTo(aTime);
         });
       }
 
@@ -145,6 +166,7 @@ class AgoraService {
         'dietitianUid': doc['dietitianUid'],
         'clientUid': doc['clientUid'],
         'status': doc['status'],
+        'dietitianJoined': doc['dietitianJoined'],
       };
     } catch (e) {
       print('Error checking for active calls: $e');

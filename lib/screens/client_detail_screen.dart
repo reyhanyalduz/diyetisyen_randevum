@@ -245,11 +245,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
             client!.name,
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 8),
-          Text(
-            client!.email,
-            style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-          ),
+          
         ],
       ),
     );
