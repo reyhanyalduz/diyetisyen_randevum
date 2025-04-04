@@ -276,7 +276,7 @@ class NotificationService {
     final int uniqueId =
         DateTime.now().millisecondsSinceEpoch.remainder(100000);
 
-    // Bildirimleri 30 ve 20 dakika önce planla
+    // Bildirimleri 30 ve 1 dakika önce planla
     await _scheduleNotification(
       id: uniqueId + 1,
       title: 'Randevu Hatırlatması (30 dk)',
@@ -286,9 +286,9 @@ class NotificationService {
 
     await _scheduleNotification(
       id: uniqueId + 2,
-      title: 'Randevu Hatırlatması (20 dk)',
-      body: 'Diyetisyen $dietitianName ile randevunuza 20 dakika kaldı',
-      scheduledTime: appointmentTime.subtract(Duration(minutes: 20)),
+      title: 'Randevu Hatırlatması (1 dk)',
+      body: 'Diyetisyen $dietitianName ile randevunuza 1 dakika kaldı',
+      scheduledTime: appointmentTime.subtract(Duration(minutes: 1)),
     );
   }
 
