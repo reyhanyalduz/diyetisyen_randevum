@@ -63,88 +63,57 @@ class AuthService {
   // Kullanıcı giriş işlemi
   Future<AppUser?> signIn(String email, String password) async {
     try {
-      print("Giriş denemesi - Email: $email");
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      String uid = userCredential.user!.uid;
-      print("Firebase Authentication başarılı - UID: $uid");
+      if (userCredential.user != null) {
+        String uid = userCredential.user!.uid;
+        DocumentSnapshot userDoc =
+            await _firestore.collection('users').doc(uid).get();
+        if (userDoc.exists) {
+          String userType = userDoc.get('userType').toString();
 
-      // Users koleksiyonundan kullanıcı tipini al
-      DocumentSnapshot userDoc =
-          await _firestore.collection('users').doc(uid).get();
-
-      // Eğer users koleksiyonunda kayıt yoksa, dietitians koleksiyonuna bakıp
-      // users koleksiyonuna kayıt oluşturalım
-      if (!userDoc.exists) {
-        print(
-            "Users koleksiyonunda kayıt bulunamadı, dietitians kontrol ediliyor...");
-        DocumentSnapshot dietitianDoc =
-            await _firestore.collection('dietitians').doc(uid).get();
-
-        if (dietitianDoc.exists) {
-          // Diyetisyen kaydı bulundu, users koleksiyonuna ekleyelim
-          Map<String, dynamic> userData = {
-            'uid': uid,
-            'email': email,
-            'userType': 'dietitian',
-            'name': dietitianDoc.get('name') ?? '',
-          };
-
-          await _firestore.collection('users').doc(uid).set(userData);
-          print("Users koleksiyonuna diyetisyen kaydı eklendi");
-
-          return Dietitian(
-            uid: uid,
-            email: email,
-            name: dietitianDoc.get('name') ?? '',
-            specialty: dietitianDoc.get('specialty') ?? '',
-          );
-        }
-
-        print("Diyetisyen kaydı da bulunamadı!");
-        return null;
-      }
-
-      // Normal akış devam eder...
-      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-      String userType = userData['userType'].toString();
-      print("Kullanıcı tipi: $userType");
-
-      if (userType == 'dietitian') {
-        DocumentSnapshot dietitianDoc =
-            await _firestore.collection('dietitians').doc(uid).get();
-        if (dietitianDoc.exists) {
-          return Dietitian(
-            uid: uid,
-            email: email,
-            name: dietitianDoc.get('name') ?? '',
-            specialty: dietitianDoc.get('specialty') ?? '',
-          );
-        }
-      } else if (userType == 'client') {
-        print("Danışan girişi tespit edildi");
-        DocumentSnapshot clientDoc =
-            await _firestore.collection('clients').doc(uid).get();
-        if (clientDoc.exists) {
-          Map<String, dynamic> clientData =
-              clientDoc.data() as Map<String, dynamic>;
-          return Client(
-            uid: uid,
-            email: email,
-            name: clientData['name'] ?? '',
-            height: clientData['height'] ?? 0,
-            weight: clientData['weight'] ?? 0.0,
-            allergies: List<String>.from(clientData['allergies'] ?? []),
-            diseases: List<String>.from(clientData['diseases'] ?? []),
-            dietitianUid: clientData['dietitianUid'],
-          );
+          if (userType == 'dietitian') {
+            DocumentSnapshot dietitianDoc =
+                await _firestore.collection('dietitians').doc(uid).get();
+            if (dietitianDoc.exists) {
+              Map<String, dynamic> dietitianData =
+                  dietitianDoc.data() as Map<String, dynamic>;
+              return Dietitian(
+                uid: uid,
+                email: email,
+                name: dietitianData['name'] ?? '',
+                specialty: dietitianData['specialty'] ?? '',
+                experience: dietitianData['experience'] ?? '',
+                education: dietitianData['education'] ?? '',
+                about: dietitianData['about'] ?? '',
+                expertiseAreas:
+                    List<String>.from(dietitianData['expertiseAreas'] ?? []),
+              );
+            }
+          } else if (userType == 'client') {
+            print("Danışan girişi tespit edildi");
+            DocumentSnapshot clientDoc =
+                await _firestore.collection('clients').doc(uid).get();
+            if (clientDoc.exists) {
+              Map<String, dynamic> clientData =
+                  clientDoc.data() as Map<String, dynamic>;
+              return Client(
+                uid: uid,
+                email: email,
+                name: clientData['name'] ?? '',
+                height: clientData['height'] ?? 0,
+                weight: clientData['weight'] ?? 0.0,
+                allergies: List<String>.from(clientData['allergies'] ?? []),
+                diseases: List<String>.from(clientData['diseases'] ?? []),
+                dietitianUid: clientData['dietitianUid'],
+              );
+            }
+          }
         }
       }
-
-      print("Kullanıcı verisi dönüştürülemedi!");
       return null;
     } catch (e) {
       print("Giriş hatası detayı: $e");
@@ -172,11 +141,18 @@ class AuthService {
               .doc(firebaseUser.uid)
               .get();
           if (dietitianDoc.exists) {
+            Map<String, dynamic> dietitianData =
+                dietitianDoc.data() as Map<String, dynamic>;
             return Dietitian(
               uid: firebaseUser.uid,
               email: firebaseUser.email ?? '',
-              name: dietitianDoc.get('name') ?? '',
-              specialty: dietitianDoc.get('specialty') ?? '',
+              name: dietitianData['name'] ?? '',
+              specialty: dietitianData['specialty'] ?? '',
+              experience: dietitianData['experience'] ?? '',
+              education: dietitianData['education'] ?? '',
+              about: dietitianData['about'] ?? '',
+              expertiseAreas:
+                  List<String>.from(dietitianData['expertiseAreas'] ?? []),
             );
           }
         } else if (userType == 'client') {

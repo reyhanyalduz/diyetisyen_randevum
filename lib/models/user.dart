@@ -40,6 +40,10 @@ class AppUser {
         name: map['name'],
         email: map['email'],
         specialty: map['specialty'] ?? '',
+        experience: map['experience'] ?? '',
+        expertiseAreas: List<String>.from(map['expertiseAreas'] ?? []),
+        education: map['education'] ?? '',
+        about: map['about'] ?? '',
       );
     }
   }
@@ -91,12 +95,20 @@ class Client extends AppUser {
 
 class Dietitian extends AppUser {
   final String specialty;
+  final String experience;
+  final List<String> expertiseAreas;
+  final String education;
+  final String about;
 
   Dietitian({
     required String uid,
     required String name,
     required String email,
     required this.specialty,
+    this.experience = '',
+    this.expertiseAreas = const [],
+    this.education = '',
+    this.about = '',
   }) : super(uid: uid, name: name, email: email, userType: UserType.dietitian);
 
   @override
@@ -107,11 +119,15 @@ class Dietitian extends AppUser {
       'email': email,
       'userType': 'dietitian',
       'specialty': specialty,
+      'experience': experience,
+      'expertiseAreas': expertiseAreas,
+      'education': education,
+      'about': about,
     };
   }
 
   @override
   String toString() {
-    return 'Dietitian{name: $name, email: $email, specialty: $specialty}';
+    return 'Dietitian{name: $name, email: $email, specialty: $specialty, experience: $experience, expertiseAreas: $expertiseAreas, education: $education, about: $about}';
   }
 }

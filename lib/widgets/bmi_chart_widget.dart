@@ -117,28 +117,10 @@ class BMIChartWidget extends StatelessWidget {
                     ),
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
-                        showTitles: true,
+                        showTitles: false,
                         reservedSize: 40,
                         interval: 0.1,
                         getTitlesWidget: (value, meta) {
-                          if ((value - 18.5).abs() < 0.1) {
-                            return const Text(
-                              '18.5',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.green,
-                              ),
-                            );
-                          }
-                          if ((value - 24.9).abs() < 0.1) {
-                            return const Text(
-                              '24.9',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.green,
-                              ),
-                            );
-                          }
                           return const Text('');
                         },
                       ),
@@ -150,6 +132,11 @@ class BMIChartWidget extends StatelessWidget {
                           if (value != value.roundToDouble())
                             return const Text('');
                           if (value.toInt() >= sortedWeeks.length)
+                            return const Text('');
+
+                          // Calculate interval to show max 6 labels
+                          final interval = (sortedWeeks.length / 6).ceil();
+                          if (value.toInt() % interval != 0)
                             return const Text('');
 
                           final dateStr = sortedWeeks[value.toInt()];

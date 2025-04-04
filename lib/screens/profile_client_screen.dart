@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
 import '../models/diet_plan.dart';
 import '../models/user.dart';
 import '../screens/video_call_screen.dart';
@@ -80,14 +82,16 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
 
     try {
       if (_client.dietitianUid != null) {
-        final dietitian =
-            await _dietitianService.getDietitianById(_client.dietitianUid!);
-        if (mounted &&
-            dietitian != null &&
-            dietitian.uid != _selectedDietitian?.uid) {
-          setState(() {
-            _selectedDietitian = dietitian;
-          });
+        // Only load if we don't have the dietitian or if it's a different dietitian
+        if (_selectedDietitian == null ||
+            _selectedDietitian!.uid != _client.dietitianUid) {
+          final dietitian =
+              await _dietitianService.getDietitianById(_client.dietitianUid!);
+          if (mounted && dietitian != null) {
+            setState(() {
+              _selectedDietitian = dietitian;
+            });
+          }
         }
       } else if (_selectedDietitian != null) {
         setState(() {
@@ -188,7 +192,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
             ],
           ),
           backgroundColor: Colors.green,
-                    duration: const Duration(seconds: 20),
+          duration: const Duration(seconds: 20),
           action: SnackBarAction(
             label: 'CEVAPLA',
             textColor: Colors.white,
@@ -393,7 +397,6 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
 
   Future<void> _changeDietitian() async {
     try {
-      // Mevcut diyetisyenlerin listesini al
       final dietitians = await _firestore
           .collection('users')
           .where('userType', isEqualTo: 'dietitian')
@@ -405,66 +408,146 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         context: context,
         builder: (context) => AlertDialog(
           title: Text('Diyetisyen Seç'),
-          content: SizedBox(
+          content: Container(
             width: double.maxFinite,
+            height: MediaQuery.of(context).size.height * 0.6,
             child: ListView.builder(
               shrinkWrap: true,
               itemCount: dietitians.docs.length,
               itemBuilder: (context, index) {
                 final dietitian =
                     AppUser.fromMap(dietitians.docs[index].data()) as Dietitian;
-                return ListTile(
-                  title: Text(dietitian.name),
-                  subtitle: Text(dietitian.specialty),
-                  selected: dietitian.uid == _client.dietitianUid,
-                  onTap: () async {
-                    try {
-                      // Update Firebase in both collections
-                      await _firestore
-                          .collection('clients')
-                          .doc(_client.uid)
-                          .update({'dietitianUid': dietitian.uid});
+                return Card(
+                  elevation: 2,
+                  margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                  child: InkWell(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) => AlertDialog(
+                          title: Row(
+                            children: [
+                              CircleAvatar(
+                                child: Icon(Icons.person),
+                                radius: 25,
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  dietitian.name,
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          content: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildInfoSection('Hakkında', dietitian.about),
+                                SizedBox(height: 16),
+                                _buildInfoSection(
+                                    'Eğitim', dietitian.education),
+                                SizedBox(height: 16),
+                                _buildInfoSection(
+                                    'Deneyim', dietitian.experience),
+                                if (dietitian.expertiseAreas.isNotEmpty) ...[
+                                  SizedBox(height: 16),
+                                  _buildInfoSection('Uzmanlık Alanları',
+                                      dietitian.expertiseAreas.join(', ')),
+                                ],
+                              ],
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text('Geri'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () async {
+                                try {
+                                  await _firestore
+                                      .collection('clients')
+                                      .doc(_client.uid)
+                                      .update({'dietitianUid': dietitian.uid});
 
-                      // Also update the users collection
-                      await _firestore
-                          .collection('users')
-                          .doc(_client.uid)
-                          .update({'dietitianUid': dietitian.uid});
+                                  await _firestore
+                                      .collection('users')
+                                      .doc(_client.uid)
+                                      .update({'dietitianUid': dietitian.uid});
 
-                      // Update local client object
-                      setState(() {
-                        _client = Client(
-                          uid: _client.uid,
-                          name: _client.name,
-                          email: _client.email,
-                          height: _client.height,
-                          weight: _client.weight,
-                          allergies: _client.allergies,
-                          diseases: _client.diseases,
-                          dietitianUid: dietitian.uid,
-                        );
-                        _selectedDietitian = dietitian;
-                      });
+                                  setState(() {
+                                    _client = Client(
+                                      uid: _client.uid,
+                                      name: _client.name,
+                                      email: _client.email,
+                                      height: _client.height,
+                                      weight: _client.weight,
+                                      allergies: _client.allergies,
+                                      diseases: _client.diseases,
+                                      dietitianUid: dietitian.uid,
+                                    );
+                                    _selectedDietitian = dietitian;
+                                  });
 
-                      // Show success message
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text('Diyetisyen başarıyla güncellendi')),
+                                  Navigator.of(context)
+                                      .pop(); // Close detail dialog
+                                  Navigator.of(context)
+                                      .pop(); // Close selection dialog
+
+                                  // Reload the dietitian information to ensure it's up to date
+                                  await _loadSelectedDietitian();
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text(
+                                            'Diyetisyen başarıyla seçildi')),
+                                  );
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content:
+                                            Text('Diyetisyen seçilemedi: $e')),
+                                  );
+                                }
+                              },
+                              child: Text('Seç'),
+                            ),
+                          ],
+                        ),
                       );
-
-                      Navigator.pop(context);
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text('Diyetisyen güncellenemedi: $e')),
-                      );
-                      Navigator.pop(context);
-                    }
-                  },
+                    },
+                    child: ListTile(
+                      contentPadding: EdgeInsets.all(16),
+                      leading: CircleAvatar(
+                        child: Icon(Icons.person),
+                        radius: 25,
+                      ),
+                      title: Text(
+                        dietitian.name,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      trailing: Icon(Icons.arrow_forward_ios),
+                    ),
+                  ),
                 );
               },
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('İptal'),
+            ),
+          ],
         ),
       );
     } catch (e) {
@@ -472,6 +555,30 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         SnackBar(content: Text('Diyetisyen listesi yüklenemedi: $e')),
       );
     }
+  }
+
+  Widget _buildInfoSection(String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.blue[800],
+          ),
+        ),
+        SizedBox(height: 8),
+        Text(
+          content,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.black87,
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -521,25 +628,18 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
 
             var clientData = snapshot.data!.data() as Map<String, dynamic>;
 
-            // Instead of directly updating state, check if we need to schedule an update
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (_client.uid != clientData['uid'] ||
-                  _client.height != clientData['height'] ||
-                  _client.weight != clientData['weight'] ||
-                  _client.dietitianUid != clientData['dietitianUid']) {
-                setState(() {
-                  _client = AppUser.fromMap(clientData) as Client;
-                  _heightController.text = _client.height.toString();
-                  _weightController.text = _client.weight.toString();
-                });
+            // Update client data only if it has changed
+            if (_client.uid != clientData['uid'] ||
+                _client.height != clientData['height'] ||
+                _client.weight != clientData['weight'] ||
+                _client.dietitianUid != clientData['dietitianUid']) {
+              _client = AppUser.fromMap(clientData) as Client;
+              _heightController.text = _client.height.toString();
+              _weightController.text = _client.weight.toString();
 
-                // Diyetisyen bilgisini güncelle
-                if (_client.dietitianUid != null &&
-                    (_selectedDietitian?.uid != _client.dietitianUid)) {
-                  _loadSelectedDietitian();
-                }
-              }
-            });
+              // Load dietitian information when client data changes
+              _loadSelectedDietitian();
+            }
 
             return SingleChildScrollView(
               child: Padding(
@@ -564,28 +664,30 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                     SizedBox(
                       height: 16,
                     ),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: InfoCard(
-                              'VKİ', '${_client.bmi.toStringAsFixed(2)}'),
-                        ),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => _showMeasurementDialog(),
-                            child: InfoCard('Kilo', '${_client.weight} kg'),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: InfoCard(
+                                'VKİ', '${_client.bmi.toStringAsFixed(2)}'),
                           ),
-                        ),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => _showMeasurementDialog(),
-                            child: InfoCard('Boy', '${_client.height} cm'),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => _showMeasurementDialog(),
+                              child: InfoCard('Kilo', '${_client.weight} kg'),
+                            ),
                           ),
-                        ),
-                      ],
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => _showMeasurementDialog(),
+                              child: InfoCard('Boy', '${_client.height} cm'),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     SizedBox(height: 20),
                     Container(
@@ -594,19 +696,26 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                       child: BMIChartWidget(clientId: _client.uid),
                     ),
                     SizedBox(height: 20),
-                    TagSection(
-                      context: context,
-                      title: 'Alerjiler',
-                      initialTags: _client.allergies,
-                      onTagsUpdated: (tags) =>
-                          _updateClientData('allergies', tags),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: TagSection(
+                        context: context,
+                        title: 'Alerjiler',
+                        initialTags: _client.allergies,
+                        onTagsUpdated: (tags) =>
+                            _updateClientData('allergies', tags),
+                      ),
                     ),
-                    TagSection(
-                      context: context,
-                      title: 'Hastalıklar',
-                      initialTags: _client.diseases,
-                      onTagsUpdated: (tags) =>
-                          _updateClientData('diseases', tags),
+                    SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: TagSection(
+                        context: context,
+                        title: 'Hastalıklar',
+                        initialTags: _client.diseases,
+                        onTagsUpdated: (tags) =>
+                            _updateClientData('diseases', tags),
+                      ),
                     ),
                     SizedBox(height: 20),
                     ListTile(
@@ -616,8 +725,6 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(_selectedDietitian!.name),
-                                Text(_selectedDietitian!.specialty,
-                                    style: TextStyle(fontSize: 12)),
                               ],
                             )
                           : Text('Diyetisyen seçilmedi'),

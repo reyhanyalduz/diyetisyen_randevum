@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../models/user.dart';
 
 class DietitianService {
@@ -16,7 +17,7 @@ class DietitianService {
   }
 
   Future<Dietitian?> getDietitianById(String uid) async {
-    final doc = await _firestore.collection('users').doc(uid).get();
+    final doc = await _firestore.collection('dietitians').doc(uid).get();
     if (!doc.exists) return null;
     return AppUser.fromMap(doc.data()!) as Dietitian;
   }
