@@ -1,4 +1,6 @@
 import 'dart:io';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
@@ -8,10 +10,30 @@ import 'package:pdf/widgets.dart' as pw;
 import '../models/diet_plan.dart';
 
 class PdfService {
-  Future<void> generateDietPlanPdf(DietPlan dietPlan) async {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // Varsayılan yazı boyutları
+  static const double defaultTitleSize = 24.0;
+  static const double defaultSubtitleSize = 16.0;
+  static const double defaultTextSize = 12.0;
+
+  Future<void> generateDietPlanPdf(
+    DietPlan dietPlan, {
+    double titleSize = defaultTitleSize,
+    double subtitleSize = defaultSubtitleSize,
+    double textSize = defaultTextSize,
+  }) async {
     final pdf = pw.Document();
 
     final createdAt = dietPlan.createdAt.toDate();
+
+    // Danışan bilgilerini al
+    final clientDoc =
+        await _firestore.collection('clients').doc(dietPlan.clientId).get();
+    String clientName = 'Danışan';
+    if (clientDoc.exists) {
+      clientName = clientDoc.data()?['name'] ?? 'Danışan';
+    }
 
     pdf.addPage(
       pw.MultiPage(
@@ -30,7 +52,7 @@ class PdfService {
             child: pw.Text(
               dietPlan.title,
               style: pw.TextStyle(
-                fontSize: 24,
+                fontSize: titleSize,
                 fontWeight: pw.FontWeight.bold,
               ),
             ),
@@ -38,31 +60,40 @@ class PdfService {
           pw.SizedBox(height: 20),
           pw.Text(
             'Tarih: ${createdAt.day}/${createdAt.month}/${createdAt.year}',
-            style: pw.TextStyle(fontSize: 12),
+            style: pw.TextStyle(fontSize: textSize),
+          ),
+          pw.SizedBox(height: 5),
+          pw.Text(
+            'Danışan: $clientName',
+            style: pw.TextStyle(fontSize: textSize),
           ),
           pw.SizedBox(height: 20),
           _buildMealSection(
-              'Kahvaltı', dietPlan.breakfast, dietPlan.breakfastTime),
+              'Kahvaltı', dietPlan.breakfast, dietPlan.breakfastTime,
+              subtitleSize: subtitleSize, textSize: textSize),
           pw.SizedBox(height: 15),
-          _buildMealSection('Öğle Yemeği', dietPlan.lunch, dietPlan.lunchTime),
+          _buildMealSection('Öğle Yemeği', dietPlan.lunch, dietPlan.lunchTime,
+              subtitleSize: subtitleSize, textSize: textSize),
           pw.SizedBox(height: 15),
-          _buildMealSection('Ara Öğün', dietPlan.snack, dietPlan.snackTime),
+          _buildMealSection('Ara Öğün', dietPlan.snack, dietPlan.snackTime,
+              subtitleSize: subtitleSize, textSize: textSize),
           pw.SizedBox(height: 15),
           _buildMealSection(
-              'Akşam Yemeği', dietPlan.dinner, dietPlan.dinnerTime),
+              'Akşam Yemeği', dietPlan.dinner, dietPlan.dinnerTime,
+              subtitleSize: subtitleSize, textSize: textSize),
           if (dietPlan.notes.isNotEmpty) ...[
             pw.SizedBox(height: 20),
             pw.Text(
               'Notlar:',
               style: pw.TextStyle(
-                fontSize: 16,
+                fontSize: subtitleSize,
                 fontWeight: pw.FontWeight.bold,
               ),
             ),
             pw.SizedBox(height: 5),
             pw.Text(
               dietPlan.notes,
-              style: pw.TextStyle(fontSize: 12),
+              style: pw.TextStyle(fontSize: textSize),
             ),
           ],
         ],
@@ -76,35 +107,34 @@ class PdfService {
     await OpenFile.open(file.path);
   }
 
-  pw.Widget _buildMealSection(String title, String content, String time) {
-    return pw.Container(
-      padding: pw.EdgeInsets.all(10),
-      decoration: pw.BoxDecoration(
-        border: pw.Border.all(),
-        borderRadius: pw.BorderRadius.circular(5),
-      ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Text(
-            title,
-            style: pw.TextStyle(
-              fontSize: 16,
-              fontWeight: pw.FontWeight.bold,
-            ),
+  pw.Widget _buildMealSection(
+    String title,
+    String content,
+    String time, {
+    double subtitleSize = defaultSubtitleSize,
+    double textSize = defaultTextSize,
+  }) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          title,
+          style: pw.TextStyle(
+            fontSize: subtitleSize,
+            fontWeight: pw.FontWeight.bold,
           ),
-          pw.SizedBox(height: 5),
-          pw.Text(
-            'Saat: $time',
-            style: pw.TextStyle(fontSize: 12),
-          ),
-          pw.SizedBox(height: 5),
-          pw.Text(
-            content,
-            style: pw.TextStyle(fontSize: 12),
-          ),
-        ],
-      ),
+        ),
+        pw.SizedBox(height: 5),
+        pw.Text(
+          'Saat: $time',
+          style: pw.TextStyle(fontSize: textSize),
+        ),
+        pw.SizedBox(height: 5),
+        pw.Text(
+          content,
+          style: pw.TextStyle(fontSize: textSize),
+        ),
+      ],
     );
   }
 }

@@ -5,6 +5,7 @@ import '../models/diet_plan.dart';
 import '../services/diet_plan_service.dart';
 import '../services/pdf_service.dart';
 import '../utils/constants.dart';
+import 'pdf_options_menu.dart';
 
 class DietPlanWidget extends StatelessWidget {
   final String clientId;
@@ -108,20 +109,9 @@ class DietPlanWidget extends StatelessWidget {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                icon: Icon(Icons.picture_as_pdf),
-                onPressed: () async {
-                  try {
-                    await _pdfService.generateDietPlanPdf(dietPlan);
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('PDF oluşturulurken bir hata oluştu: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                },
+              PdfOptionsMenu(
+                dietPlan: dietPlan,
+                pdfService: _pdfService,
               ),
             ],
           ),

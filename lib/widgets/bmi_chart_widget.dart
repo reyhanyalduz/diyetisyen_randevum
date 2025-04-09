@@ -18,34 +18,33 @@ class BMIChartWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
       ),
-      child: FutureBuilder<QuerySnapshot>(
-        future: FirebaseFirestore.instance
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
             .collection('bmi_history')
             .where('clientId', isEqualTo: clientId)
             .orderBy('date', descending: false)
-            .limit(10)
-            .get()
-            .catchError((error) {
-          debugPrint("Firebase hatası: \$error");
-          return Future.error(error);
-        }),
+            //.limit(10)
+            .snapshots(),
         builder: (context, bmiSnapshot) {
           if (bmiSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
           if (bmiSnapshot.hasError) {
+            debugPrint("BMI veri hatası: ${bmiSnapshot.error}");
             return const Center(child: Text('Veri alınırken hata oluştu'));
           }
 
           if (!bmiSnapshot.hasData ||
               bmiSnapshot.data == null ||
               bmiSnapshot.data!.docs.isEmpty) {
+            debugPrint("BMI verisi bulunamadı");
             return const Center(
                 child: Text('Henüz VKİ geçmişi bulunmamaktadır'));
           }
 
           final bmiData = bmiSnapshot.data!.docs;
+          debugPrint("BMI veri sayısı: ${bmiData.length}");
 
           // Haftalık son değerleri grupla
           final Map<String, Map<String, dynamic>> weeklyData = {};
@@ -62,6 +61,8 @@ class BMIChartWidget extends StatelessWidget {
 
             // Her hafta için son değeri sakla
             weeklyData[weekKey] = data;
+            debugPrint(
+                "BMI verisi eklendi: Tarih: $weekKey, BMI: ${data['bmi']}");
           }
 
           // Haftalık verileri tarihe göre sırala ve spots oluştur
@@ -75,9 +76,12 @@ class BMIChartWidget extends StatelessWidget {
           }).toList();
 
           if (spots.isEmpty) {
+            debugPrint("BMI spot verisi oluşturulamadı");
             return const Center(
                 child: Text('Henüz VKİ geçmişi bulunmamaktadır'));
           }
+
+          debugPrint("Toplam BMI spot sayısı: ${spots.length}");
 
           // BMI değerleri için aralık belirle
           final minBmi = 10.0;

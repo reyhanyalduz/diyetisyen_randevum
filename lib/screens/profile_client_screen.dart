@@ -9,9 +9,10 @@ import '../screens/video_call_screen.dart';
 import '../services/agora_service.dart';
 import '../services/auth_service.dart';
 import '../services/dietitian_service.dart';
-import '../widgets/bmi_chart_widget.dart';
 import '../widgets/diet_plan_widget.dart';
-import '../widgets/info_card_widget.dart';
+import '../widgets/dietitian_section_widget.dart';
+import '../widgets/measurements_section_widget.dart';
+import '../widgets/profile_header_widget.dart';
 import '../widgets/qr_display_widget.dart';
 import '../widgets/qr_scanner_widget.dart';
 import '../widgets/tag_section_widget.dart';
@@ -647,53 +648,10 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircleAvatar(
-                          radius: 40,
-                          child: Icon(Icons.person, size: 50),
-                        ),
-                        SizedBox(width: 10),
-                        Text('${_client.name}',
-                            style: TextStyle(
-                                fontSize: 22, fontWeight: FontWeight.bold)),
-                        SizedBox(height: 10),
-                      ],
-                    ),
-                    SizedBox(
-                      height: 16,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: InfoCard(
-                                'VKİ', '${_client.bmi.toStringAsFixed(2)}'),
-                          ),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => _showMeasurementDialog(),
-                              child: InfoCard('Kilo', '${_client.weight} kg'),
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => _showMeasurementDialog(),
-                              child: InfoCard('Boy', '${_client.height} cm'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    Container(
-                      height: 200,
-                      padding: EdgeInsets.all(16),
-                      child: BMIChartWidget(clientId: _client.uid),
+                    ProfileHeaderWidget(client: _client),
+                    MeasurementsSectionWidget(
+                      client: _client,
+                      onMeasurementTap: _showMeasurementDialog,
                     ),
                     SizedBox(height: 20),
                     Padding(
@@ -718,32 +676,11 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                       ),
                     ),
                     SizedBox(height: 20),
-                    ListTile(
-                      title: Text('Diyetisyen'),
-                      subtitle: _selectedDietitian != null
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(_selectedDietitian!.name),
-                              ],
-                            )
-                          : Text('Diyetisyen seçilmedi'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.qr_code_scanner),
-                            onPressed: _scanQrCode,
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.edit),
-                            onPressed: _changeDietitian,
-                          ),
-                        ],
-                      ),
+                    DietitianSectionWidget(
+                      selectedDietitian: _selectedDietitian,
+                      onQrScan: _scanQrCode,
+                      onChangeDietitian: _changeDietitian,
                     ),
-                    SizedBox(height: 20),
-                    //_buildTabSection(),
                     SizedBox(height: 20),
                     DietPlanWidget(
                       clientId: _client.uid,

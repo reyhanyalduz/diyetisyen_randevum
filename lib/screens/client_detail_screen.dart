@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../models/diet_plan.dart';
 import '../models/user.dart';
 import '../screens/video_call_screen.dart';
@@ -11,6 +12,7 @@ import '../services/diet_plan_service.dart';
 import '../services/pdf_service.dart';
 import '../utils/constants.dart';
 import '../widgets/diet_plan_dialog.dart';
+import '../widgets/pdf_options_menu.dart';
 
 class ClientDetailScreen extends StatefulWidget {
   final String clientId;
@@ -245,7 +247,6 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
             client!.name,
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          
         ],
       ),
     );
@@ -253,7 +254,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
 
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
       child: Text(
         title,
         style: TextStyle(
@@ -266,75 +267,81 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
   }
 
   Widget _buildInfoCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(
-          color: AppColors.color1,
-          width: 1,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(
+            color: AppColors.color1,
+            width: 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
         ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildInfoRow('Boy', '${client!.height} cm'),
-          Divider(),
-          _buildInfoRow('Kilo', '${client!.weight} kg'),
-          Divider(),
-          _buildInfoRow('BMI', '${client!.bmi.toStringAsFixed(2)}'),
-          Divider(),
-          _buildInfoRow('BMI Durumu', _getBmiStatus(client!.bmi)),
-        ],
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildInfoRow('Boy', '${client!.height} cm'),
+            Divider(),
+            _buildInfoRow('Kilo', '${client!.weight} kg'),
+            Divider(),
+            _buildInfoRow('BMI', '${client!.bmi.toStringAsFixed(2)}'),
+            Divider(),
+            _buildInfoRow('BMI Durumu', _getBmiStatus(client!.bmi)),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildHealthCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(
-          color: AppColors.color1,
-          width: 1,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(
+            color: AppColors.color1,
+            width: 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
         ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Alerjiler', style: TextStyle(fontWeight: FontWeight.bold)),
-          SizedBox(height: 8),
-          client!.allergies.isEmpty
-              ? Text('Bilinen alerji yok',
-                  style: TextStyle(fontStyle: FontStyle.italic))
-              : Wrap(
-                  spacing: 8,
-                  children: client!.allergies
-                      .map((allergy) => Chip(
-                            label: Text(allergy),
-                            backgroundColor: Colors.red.shade100,
-                          ))
-                      .toList(),
-                ),
-          SizedBox(height: 16),
-          Text('Hastalıklar', style: TextStyle(fontWeight: FontWeight.bold)),
-          SizedBox(height: 8),
-          client!.diseases.isEmpty
-              ? Text('Bilinen hastalık yok',
-                  style: TextStyle(fontStyle: FontStyle.italic))
-              : Wrap(
-                  spacing: 8,
-                  children: client!.diseases
-                      .map((disease) => Chip(
-                            label: Text(disease),
-                            backgroundColor: Colors.orange.shade100,
-                          ))
-                      .toList(),
-                ),
-        ],
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Alerjiler', style: TextStyle(fontWeight: FontWeight.bold)),
+            SizedBox(height: 8),
+            client!.allergies.isEmpty
+                ? Text('Bilinen alerji yok',
+                    style: TextStyle(fontStyle: FontStyle.italic))
+                : Wrap(
+                    spacing: 8,
+                    children: client!.allergies
+                        .map((allergy) => Chip(
+                              label: Text(allergy),
+                              backgroundColor: Colors.red.shade100,
+                            ))
+                        .toList(),
+                  ),
+            SizedBox(height: 16),
+            Text('Hastalıklar', style: TextStyle(fontWeight: FontWeight.bold)),
+            SizedBox(height: 8),
+            client!.diseases.isEmpty
+                ? Text('Bilinen hastalık yok',
+                    style: TextStyle(fontStyle: FontStyle.italic))
+                : Wrap(
+                    spacing: 8,
+                    children: client!.diseases
+                        .map((disease) => Chip(
+                              label: Text(disease),
+                              backgroundColor: Colors.orange.shade100,
+                            ))
+                        .toList(),
+                  ),
+          ],
+        ),
       ),
     );
   }
@@ -368,23 +375,26 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Diyet Planları',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            ElevatedButton.icon(
-              onPressed: () => _addOrEditDietPlan(null),
-              icon: Icon(Icons.add),
-              label: Text('Yeni Plan Ekle'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
-                foregroundColor: Colors.white,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Diyet Planları',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-            ),
-          ],
+              ElevatedButton.icon(
+                onPressed: () => _addOrEditDietPlan(null),
+                icon: Icon(Icons.add),
+                label: Text('Yeni Plan Ekle'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
         ),
         SizedBox(height: 16),
         _isLoadingDietPlans
@@ -392,7 +402,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
             : _dietPlans.isEmpty
                 ? Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(6.0),
                       child: Text('Henüz diyet planı eklenmemiş'),
                     ),
                   )
@@ -414,7 +424,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
     final pdfService = PdfService();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -450,20 +460,9 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                icon: Icon(Icons.picture_as_pdf),
-                onPressed: () async {
-                  try {
-                    await pdfService.generateDietPlanPdf(dietPlan);
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('PDF oluşturulurken bir hata oluştu: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                },
+              PdfOptionsMenu(
+                dietPlan: dietPlan,
+                pdfService: pdfService,
               ),
               IconButton(
                 icon: Icon(Icons.edit),
@@ -476,39 +475,39 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
             ],
           ),
           children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildMealSection(
-                      'Kahvaltı', dietPlan.breakfast, dietPlan.breakfastTime),
+            //Padding(
+            //padding: const EdgeInsets.all(16.0),
+            //child:
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildMealSection(
+                    'Kahvaltı', dietPlan.breakfast, dietPlan.breakfastTime),
+                Divider(height: 24),
+                _buildMealSection(
+                    'Öğle Yemeği', dietPlan.lunch, dietPlan.lunchTime),
+                Divider(height: 24),
+                _buildMealSection(
+                    'Ara Öğün', dietPlan.snack, dietPlan.snackTime),
+                Divider(height: 24),
+                _buildMealSection(
+                    'Akşam Yemeği', dietPlan.dinner, dietPlan.dinnerTime),
+                if (dietPlan.notes.isNotEmpty) ...[
                   Divider(height: 24),
-                  _buildMealSection(
-                      'Öğle Yemeği', dietPlan.lunch, dietPlan.lunchTime),
-                  Divider(height: 24),
-                  _buildMealSection(
-                      'Ara Öğün', dietPlan.snack, dietPlan.snackTime),
-                  Divider(height: 24),
-                  _buildMealSection(
-                      'Akşam Yemeği', dietPlan.dinner, dietPlan.dinnerTime),
-                  if (dietPlan.notes.isNotEmpty) ...[
-                    Divider(height: 24),
-                    Text(
-                      'Notlar:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+                  Text(
+                    'Notlar:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
-                    SizedBox(height: 8),
-                    Text(
-                      dietPlan.notes,
-                      style: TextStyle(color: Colors.black87),
-                    ),
-                  ],
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    dietPlan.notes,
+                    style: TextStyle(color: Colors.black87),
+                  ),
                 ],
-              ),
+              ],
             ),
           ],
         ),

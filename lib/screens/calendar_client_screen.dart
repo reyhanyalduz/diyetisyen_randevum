@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
+
 import '../models/appointment.dart';
 import '../models/user.dart';
 import '../screens/calendar_dietitian_screen.dart';
@@ -36,6 +38,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void initState() {
     super.initState();
+    initializeDateFormatting('tr_TR', null);
     _events = {};
     _selectedDay = DateTime.now();
     _focusedDay = DateTime.now();
@@ -259,6 +262,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         await _initializeData();
         // Dolu randevuları güncelle
         await _loadBookedTimeSlots(_selectedDay);
+        // Randevu listesini güncelle
+        _loadAppointments();
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Randevu başarıyla oluşturuldu')),
@@ -416,6 +421,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         return null;
                       },
                     ),
+                    headerStyle: HeaderStyle(
+                      formatButtonVisible: false,
+                      titleCentered: true,
+                    ),
+                    calendarStyle: CalendarStyle(
+                      outsideDaysVisible: false,
+                    ),
+                    locale: 'tr_TR',
+                    availableCalendarFormats: const {
+                      CalendarFormat.month: 'Ay',
+                      CalendarFormat.week: 'Hafta',
+                    },
+                    startingDayOfWeek: StartingDayOfWeek.monday,
                   ),
                   const SizedBox(height: 8.0),
                   Row(
@@ -506,7 +524,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  DateFormat('dd MMMM yyyy, HH:mm')
+                  DateFormat('dd MMMM yyyy, HH:mm', 'tr_TR')
                       .format(appointment.dateTime),
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
@@ -577,6 +595,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
           'isCancelled': true,
           'cancelledBy': 'client',
         });
+
+        // Sayfayı yenile
+        await _initializeData();
+        // Dolu randevuları güncelle
+        await _loadBookedTimeSlots(_selectedDay);
+        // Randevu listesini güncelle
+        _loadAppointments();
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Randevu başarıyla iptal edildi')),

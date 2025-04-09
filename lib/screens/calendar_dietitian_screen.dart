@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../models/appointment.dart';
 import '../models/user.dart';
 import '../services/appointment_service.dart';
@@ -105,6 +106,7 @@ class _DietitianAppointmentPageState extends State<DietitianAppointmentPage> {
       initialDate: _selectedDay,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
+      locale: const Locale('tr', 'TR'),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(

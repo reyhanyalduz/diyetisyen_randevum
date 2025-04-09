@@ -84,16 +84,36 @@ class _TagSectionState extends State<TagSection> {
             ),
           ],
         ),
-        Wrap(
-          spacing: 8.0,
-          runSpacing: 4.0,
-          children: _tags.asMap().entries.map((entry) {
-            return Chip(
-              label: Text(entry.value),
-              onDeleted: () => _removeTag(entry.key),
-            );
-          }).toList(),
-        ),
+        SizedBox(height: 8),
+        _tags.isEmpty
+            ? Text('Henüz ${widget.title.toLowerCase()} eklenmemiş',
+                style: TextStyle(color: Colors.grey))
+            : ListView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                itemCount: _tags.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _tags[index],
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close, size: 20),
+                          onPressed: () => _removeTag(index),
+                          padding: EdgeInsets.zero,
+                          constraints: BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
       ],
     );
   }

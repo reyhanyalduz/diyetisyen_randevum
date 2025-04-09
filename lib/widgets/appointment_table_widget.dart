@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
 import '../models/appointment.dart';
 import '../services/client_service.dart';
 
@@ -69,44 +70,25 @@ class AppointmentTable extends StatelessWidget {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "${appointment.dateTime.hour}:${appointment.dateTime.minute.toString().padLeft(2, '0')}",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          Row(
+                            children: [
+                              Text(
+                                "${appointment.dateTime.hour}:${appointment.dateTime.minute.toString().padLeft(2, '0')}",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                SizedBox(height: 4),
-                                Text(
-                                  "Danışan: $clientName",
-                                  style: TextStyle(fontSize: 14),
-                                ),
-                                if (appointment.isCancelled) ...[
-                                  SizedBox(height: 4),
-                                  Text(
-                                    appointment.cancelledBy == 'dietitian'
-                                        ? "Diyetisyen tarafından iptal edildi"
-                                        : "Danışan tarafından iptal edildi",
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.red,
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          if (isDietitian && !appointment.isCancelled)
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                "Danışan: $clientName",
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              Spacer(),
+                              if (isDietitian && !appointment.isCancelled)
                                 IconButton(
                                   icon: Icon(Icons.cancel, color: Colors.red),
                                   onPressed: () async {
@@ -162,8 +144,21 @@ class AppointmentTable extends StatelessWidget {
                                     }
                                   },
                                 ),
-                              ],
+                            ],
+                          ),
+                          if (appointment.isCancelled) ...[
+                            SizedBox(height: 4),
+                            Text(
+                              appointment.cancelledBy == 'dietitian'
+                                  ? "Bu randevuyu iptal ettiniz"
+                                  : "Danışanınız bu randevuyu iptal etti",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.red,
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
+                          ],
                         ],
                       ),
                     );
