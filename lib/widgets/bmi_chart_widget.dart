@@ -145,7 +145,7 @@ class BMIChartWidget extends StatelessWidget {
 
                           final dateStr = sortedWeeks[value.toInt()];
                           return Text(
-                            DateFormat('dd/MM').format(DateTime.parse(dateStr)),
+                            DateFormat('MM').format(DateTime.parse(dateStr)),
                             style: const TextStyle(fontSize: 10),
                           );
                         },

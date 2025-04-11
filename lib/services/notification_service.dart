@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -28,6 +30,36 @@ class NotificationService {
     tz.setLocalLocation(tz.getLocation('Europe/Istanbul'));
     print('Timezone initialized: ${tz.local.name}');
 
+    // Android için bildirim kanallarını oluştur
+    const AndroidNotificationChannel appointmentChannel =
+        AndroidNotificationChannel(
+      'appointment_channel',
+      'Randevu Hatırlatmaları',
+      description: 'Randevu hatırlatma bildirimleri',
+      importance: Importance.high,
+    );
+
+    const AndroidNotificationChannel videoCallChannel =
+        AndroidNotificationChannel(
+      'video_call_channel',
+      'Video Görüşme Bildirimleri',
+      description: 'Video görüşme bildirimleri',
+      importance: Importance.max,
+    );
+
+    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+        FlutterLocalNotificationsPlugin();
+
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(appointmentChannel);
+
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(videoCallChannel);
+
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
@@ -41,8 +73,23 @@ class NotificationService {
     await _notifications.initialize(settings);
     print('Notification service initialized successfully');
 
+    // Bildirim izinlerini kontrol et ve iste
+    await _checkNotificationPermissions();
+
     // Initialize Firebase Messaging
     await _initializeFirebaseMessaging();
+  }
+
+  Future<void> _checkNotificationPermissions() async {
+    if (Platform.isAndroid) {
+      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+          _notifications.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+
+      final bool? granted =
+          await androidImplementation?.requestNotificationsPermission();
+      print('Notification permission granted: $granted');
+    }
   }
 
   Future<void> _initializeFirebaseMessaging() async {
@@ -298,42 +345,54 @@ class NotificationService {
     required String body,
     required DateTime scheduledTime,
   }) async {
-    if (scheduledTime.isBefore(DateTime.now())) {
-      print('Skipping notification (ID: $id) because it is in the past');
-      return;
-    }
+    try {
+      print('Scheduling notification:');
+      print('ID: $id');
+      print('Title: $title');
+      print('Body: $body');
+      print('Scheduled Time: $scheduledTime');
+      print('Current Time: ${DateTime.now()}');
 
-    final tz.TZDateTime scheduledTZTime =
-        tz.TZDateTime.from(scheduledTime, tz.local);
-    print('Scheduling notification ID: $id at $scheduledTZTime');
+      if (scheduledTime.isBefore(DateTime.now())) {
+        print('WARNING: Scheduled time is in the past, skipping notification');
+        return;
+      }
 
-    await _notifications.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduledTZTime,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          'appointment_reminder',
-          'Randevu Hatırlatmaları',
-          channelDescription: 'Randevu hatırlatma bildirimleri',
-          importance: Importance.high,
-          priority: Priority.high,
-          enableVibration: true,
-          playSound: true,
-          icon: '@mipmap/ic_launcher',
-        ),
+      const AndroidNotificationDetails androidPlatformChannelSpecifics =
+          AndroidNotificationDetails(
+        'appointment_channel',
+        'Randevu Hatırlatmaları',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+        enableVibration: true,
+        playSound: true,
+      );
+
+      const NotificationDetails platformChannelSpecifics = NotificationDetails(
+        android: androidPlatformChannelSpecifics,
         iOS: DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,
         ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-    );
-    print('Notification scheduled successfully');
+      );
+
+      await _notifications.zonedSchedule(
+        id,
+        title,
+        body,
+        tz.TZDateTime.from(scheduledTime, tz.local),
+        platformChannelSpecifics,
+        androidAllowWhileIdle: true,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+      print('Notification scheduled successfully');
+    } catch (e) {
+      print('ERROR scheduling notification: $e');
+    }
   }
 
   Future<void> cancelNotification(int id) async {

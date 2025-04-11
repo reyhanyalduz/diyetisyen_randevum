@@ -90,7 +90,8 @@ class _DietitianProfileScreenState extends State<DietitianProfileScreen> {
         child: SingleChildScrollView(
           physics: AlwaysScrollableScrollPhysics(),
           child: Padding(
-            padding: const EdgeInsets.all(18.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -108,16 +109,21 @@ class _DietitianProfileScreenState extends State<DietitianProfileScreen> {
                 ],
                 SizedBox(height: 8),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Danışanlarım',
+                      Expanded(
+                        child: Text(
+                          'Danışanlarım',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                          )),
+                          ),
+                        ),
+                      ),
                       Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
                             icon: Icon(Icons.qr_code_scanner),
