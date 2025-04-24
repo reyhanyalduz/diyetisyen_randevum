@@ -7,7 +7,7 @@ import '../services/pdf_service.dart';
 import '../utils/constants.dart';
 import 'pdf_options_menu.dart';
 
-class DietPlanWidget extends StatelessWidget {
+class DietPlanWidget extends StatefulWidget {
   final String clientId;
   final bool isProfileView;
   final DietPlanService _dietPlanService = DietPlanService();
@@ -18,6 +18,13 @@ class DietPlanWidget extends StatelessWidget {
     required this.clientId,
     this.isProfileView = false,
   }) : super(key: key);
+
+  @override
+  State<DietPlanWidget> createState() => _DietPlanWidgetState();
+}
+
+class _DietPlanWidgetState extends State<DietPlanWidget> {
+  bool _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +45,8 @@ class DietPlanWidget extends StatelessWidget {
           ),
         ),
         FutureBuilder<List<DietPlan>>(
-          future: _dietPlanService.getDietPlansForClient(clientId),
+          future:
+              widget._dietPlanService.getDietPlansForClient(widget.clientId),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -91,66 +99,89 @@ class DietPlanWidget extends StatelessWidget {
             ),
           ],
         ),
-        child: ExpansionTile(
-          title: Text(
-            dietPlan.title.isEmpty ? 'Diyet Listesi' : dietPlan.title,
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          subtitle: Text(
-            DateFormat('dd.MM.yyyy').format(createdAt),
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 13,
-            ),
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              PdfOptionsMenu(
-                dietPlan: dietPlan,
-                pdfService: _pdfService,
-              ),
-            ],
-          ),
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildMealSection(
-                      'Kahvaltı', dietPlan.breakfast, dietPlan.breakfastTime),
-                  Divider(height: 24),
-                  _buildMealSection(
-                      'Öğle Yemeği', dietPlan.lunch, dietPlan.lunchTime),
-                  Divider(height: 24),
-                  _buildMealSection(
-                      'Ara Öğün', dietPlan.snack, dietPlan.snackTime),
-                  Divider(height: 24),
-                  _buildMealSection(
-                      'Akşam Yemeği', dietPlan.dinner, dietPlan.dinnerTime),
-                  if (dietPlan.notes.isNotEmpty) ...[
-                    Divider(height: 24),
-                    Text(
-                      'Notlar:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+        child: StatefulBuilder(
+          builder: (context, setState) {
+            return Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          setState(() {
+                            _isExpanded = !_isExpanded;
+                          });
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                dietPlan.title.isEmpty
+                                    ? 'Diyet Listesi'
+                                    : dietPlan.title,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              Text(
+                                DateFormat('dd.MM.yyyy').format(createdAt),
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                    SizedBox(height: 8),
-                    Text(
-                      dietPlan.notes,
-                      style: TextStyle(color: Colors.black87),
+                    PdfOptionsMenu(
+                      dietPlan: dietPlan,
+                      pdfService: widget._pdfService,
                     ),
                   ],
-                ],
-              ),
-            ),
-          ],
+                ),
+                if (_isExpanded)
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildMealSection('Kahvaltı', dietPlan.breakfast,
+                            dietPlan.breakfastTime),
+                        Divider(height: 24),
+                        _buildMealSection(
+                            'Öğle Yemeği', dietPlan.lunch, dietPlan.lunchTime),
+                        Divider(height: 24),
+                        _buildMealSection(
+                            'Ara Öğün', dietPlan.snack, dietPlan.snackTime),
+                        Divider(height: 24),
+                        _buildMealSection('Akşam Yemeği', dietPlan.dinner,
+                            dietPlan.dinnerTime),
+                        if (dietPlan.notes.isNotEmpty) ...[
+                          Divider(height: 24),
+                          Text(
+                            'Notlar:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            dietPlan.notes,
+                            style: TextStyle(color: Colors.black87),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
       ),
     );

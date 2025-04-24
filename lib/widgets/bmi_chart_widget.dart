@@ -13,7 +13,7 @@ class BMIChartWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 200,
+      //height: 200,
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.white,

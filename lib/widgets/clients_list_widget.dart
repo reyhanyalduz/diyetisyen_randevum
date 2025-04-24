@@ -80,11 +80,11 @@ class ClientsListWidget extends StatelessWidget {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 9.0),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            //mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Toplam Danışan:',
+              Text('Toplam Danışan: ',
                   style: TextStyle(color: Colors.grey.shade700)),
               Text(
                 '${clients.length}',
@@ -100,53 +100,58 @@ class ClientsListWidget extends StatelessWidget {
           itemCount: clients.length,
           itemBuilder: (context, index) {
             final client = clients[index];
-            return Container(
-              margin: EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(
-                  color: AppColors.color2.withOpacity(0.3),
-                  width: 1.0,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ListTile(
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                leading: CircleAvatar(
-                  backgroundColor: AppColors.color2.withOpacity(0.1),
-                  child: Text(
-                    client.name.isNotEmpty ? client.name[0].toUpperCase() : '?',
-                    style: TextStyle(color: AppColors.color1),
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: Container(
+                margin: EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(
+                    color: AppColors.color2.withOpacity(0.3),
+                    width: 1.0,
                   ),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                title: Text(
-                  client.name,
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(height: 4),
-                    Text(
-                        'Boy: ${client.height} cm | Kilo: ${client.weight} kg'),
-                    Text(
-                      'BMI: ${client.bmi.toStringAsFixed(2)}',
+                child: ListTile(
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  leading: CircleAvatar(
+                    backgroundColor: AppColors.color2.withOpacity(0.1),
+                    child: Text(
+                      client.name.isNotEmpty
+                          ? client.name[0].toUpperCase()
+                          : '?',
                       style: TextStyle(color: AppColors.color1),
                     ),
-                  ],
+                  ),
+                  title: Text(
+                    client.name,
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: 4),
+                      Text(
+                          'Boy: ${client.height} cm | Kilo: ${client.weight} kg'),
+                      Text(
+                        'BMI: ${client.bmi.toStringAsFixed(2)}',
+                        style: TextStyle(color: AppColors.color1),
+                      ),
+                    ],
+                  ),
+                  trailing: Icon(Icons.arrow_forward_ios,
+                      size: 16, color: AppColors.color2),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ClientDetailScreen(clientId: client.uid),
+                      ),
+                    ).then((_) => onClientAdded());
+                  },
                 ),
-                trailing: Icon(Icons.arrow_forward_ios,
-                    size: 16, color: AppColors.color2),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          ClientDetailScreen(clientId: client.uid),
-                    ),
-                  ).then((_) => onClientAdded());
-                },
               ),
             );
           },

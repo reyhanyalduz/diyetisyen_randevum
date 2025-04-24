@@ -5,12 +5,14 @@ class TagSection extends StatefulWidget {
   final String title;
   final List<String> initialTags;
   final Function(List<String>) onTagsUpdated;
+  final EdgeInsetsGeometry? padding;
 
   const TagSection({
     required this.context,
     required this.title,
     required this.initialTags,
     required this.onTagsUpdated,
+    this.padding,
   });
 
   @override
@@ -70,51 +72,63 @@ class _TagSectionState extends State<TagSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Padding(
+      padding: widget.padding ?? EdgeInsets.symmetric(horizontal: 16.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8.0),
+        ),
+        padding: widget.padding ??
+            EdgeInsets.only(left: 16.0, top: 16.0, bottom: 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.title,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            IconButton(
-              icon: Icon(Icons.add),
-              onPressed: _addTag,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(widget.title,
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                IconButton(
+                  icon: Icon(Icons.add),
+                  onPressed: _addTag,
+                ),
+              ],
             ),
+            SizedBox(height: 8),
+            _tags.isEmpty
+                ? Text('Henüz ${widget.title.toLowerCase()} eklenmemiş',
+                    style: TextStyle(color: Colors.grey))
+                : ListView.builder(
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    itemCount: _tags.length,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _tags[index],
+                                style: TextStyle(fontSize: 16),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.close, size: 20),
+                              onPressed: () => _removeTag(index),
+                              padding: EdgeInsets.zero,
+                              constraints: BoxConstraints(),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
           ],
         ),
-        SizedBox(height: 8),
-        _tags.isEmpty
-            ? Text('Henüz ${widget.title.toLowerCase()} eklenmemiş',
-                style: TextStyle(color: Colors.grey))
-            : ListView.builder(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                itemCount: _tags.length,
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _tags[index],
-                            style: TextStyle(fontSize: 16),
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.close, size: 20),
-                          onPressed: () => _removeTag(index),
-                          padding: EdgeInsets.zero,
-                          constraints: BoxConstraints(),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-      ],
+      ),
     );
   }
 }

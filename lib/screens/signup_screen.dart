@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
@@ -26,19 +27,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
     bool isKeyboardOpen = keyboardHeight > 0;
 
     return Scaffold(
+      backgroundColor: Color(0xFFF4F7FC),
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Column(
           children: [
             if (!isKeyboardOpen) SizedBox(height: 50),
             Container(
+              color: Color(0xFFF4F7FC),
               height:
                   isKeyboardOpen ? screenHeight * 0.20 : screenHeight * 0.27,
               child: Center(
                 child: Padding(
-                  padding: EdgeInsets.all(32),
-                  child: Image.asset('assets/images/dietitian.png',
-                      color: AppColors.color1),
+                  padding: EdgeInsets.all(1),
+                  child: Image.asset(
+                    'assets/images/newlogo2.png',
+                  ),
                 ),
               ),
             ),
@@ -67,9 +71,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 Row(
                                   children: [
                                     Container(
-                                      width: 100,
+                                      width: 85,
                                       child: Padding(
-                                        padding: EdgeInsets.only(left: 20),
+                                        padding: EdgeInsets.only(left: 16),
                                         child: Text(
                                           'Ad Soyad',
                                           style: TextStyle(
@@ -110,16 +114,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 Row(
                                   children: [
                                     Container(
-                                      width: 100,
+                                      width: 85,
                                       child: Padding(
-                                        padding: EdgeInsets.only(left: 20),
+                                        padding: EdgeInsets.only(left: 16),
                                         child: Text(
                                           'E-mail',
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.w500,
                                           ),
-                                          textAlign: TextAlign.left,
+                                          textAlign: TextAlign.center,
                                         ),
                                       ),
                                     ),
@@ -157,16 +161,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 Row(
                                   children: [
                                     Container(
-                                      width: 100,
+                                      width: 85,
                                       child: Padding(
-                                        padding: EdgeInsets.only(left: 20),
+                                        padding: EdgeInsets.only(left: 16),
                                         child: Text(
                                           'Şifre',
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.w500,
                                           ),
-                                          textAlign: TextAlign.left,
+                                          textAlign: TextAlign.center,
                                         ),
                                       ),
                                     ),
@@ -216,9 +220,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 Row(
                                   children: [
                                     Container(
-                                      width: 100,
+                                      width: 85,
                                       child: Padding(
-                                        padding: EdgeInsets.only(left: 20),
+                                        padding: EdgeInsets.only(left: 16),
                                         child: Text(
                                           'Kullanıcı',
                                           style: TextStyle(
@@ -232,7 +236,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     Expanded(
                                       child: Container(
                                         padding: EdgeInsets.symmetric(
-                                            horizontal: 20, vertical: 5),
+                                            horizontal: 20, vertical: 0),
                                         decoration: BoxDecoration(
                                           color: Colors.white,
                                           borderRadius: BorderRadius.all(
@@ -265,30 +269,39 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   ],
                                 ),
                                 SizedBox(height: isKeyboardOpen ? 5 : 25),
-                                ElevatedButton(
-                                  onPressed: _isLoading ? null : _handleSignUp,
-                                  child: _isLoading
-                                      ? CircularProgressIndicator(
-                                          color: Colors.white)
-                                      : Text("Kayıt Ol"),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: AppColors.color1,
-                                    padding: EdgeInsets.symmetric(
-                                        horizontal: 40, vertical: 12),
-                                    textStyle: TextStyle(fontSize: 16),
+                                Row(children: [
+                                  SizedBox(width: 145),
+                                  ElevatedButton(
+                                    onPressed:
+                                        _isLoading ? null : _handleSignUp,
+                                    child: _isLoading
+                                        ? CircularProgressIndicator(
+                                            color: Colors.white)
+                                        : Text("Kayıt Ol"),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.white,
+                                      foregroundColor: AppColors.color1,
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 40, vertical: 12),
+                                      textStyle: TextStyle(fontSize: 16),
+                                    ),
                                   ),
-                                ),
-                                SizedBox(height: isKeyboardOpen ? 5 : 10),
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pushReplacementNamed(
-                                          context, '/login'),
-                                  child: Text(
-                                      "Zaten hesabınız var mı? Giriş yapın"),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.white,
-                                  ),
+                                ]),
+                                SizedBox(height: isKeyboardOpen ? 1 : 5),
+                                Row(
+                                  children: [
+                                    SizedBox(width: 86),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pushReplacementNamed(
+                                              context, '/login'),
+                                      child: Text(
+                                          "Zaten hesabınız var mı? Giriş yapın"),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),

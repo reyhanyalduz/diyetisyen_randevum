@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../models/user.dart';
 import 'tag_section_widget.dart';
 
@@ -21,10 +22,11 @@ class ProfessionalInfoWidget extends StatelessWidget {
       children: [
         Card(
           elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           color: Colors.white,
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.only(left: 14, bottom: 14, top: 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -92,20 +94,19 @@ class ProfessionalInfoWidget extends StatelessWidget {
         SizedBox(height: 16),
         Card(
           elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           color: Colors.white,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TagSection(
-              context: context,
-              title: 'Uzmanlık Alanları',
-              initialTags: dietitian.expertiseAreas,
-              onTagsUpdated: onExpertiseUpdated,
-            ),
+          child: TagSection(
+            padding: EdgeInsets.only(left: 6, top: 6, bottom: 8),
+            context: context,
+            title: 'Uzmanlık Alanları',
+            initialTags: dietitian.expertiseAreas,
+            onTagsUpdated: onExpertiseUpdated,
           ),
         ),
         SizedBox(height: 16),
       ],
     );
   }
-} 
+}

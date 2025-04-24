@@ -83,6 +83,7 @@ class _DietitianProfileScreenState extends State<DietitianProfileScreen> {
               Navigator.pushReplacementNamed(context, '/login');
             },
           ),
+          SizedBox(width: 12),
         ],
       ),
       body: RefreshIndicator(
@@ -91,7 +92,7 @@ class _DietitianProfileScreenState extends State<DietitianProfileScreen> {
           physics: AlwaysScrollableScrollPhysics(),
           child: Padding(
             padding:
-                const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                const EdgeInsets.symmetric(horizontal: 8.0, vertical: 20.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

@@ -62,6 +62,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       // Sonra randevuları yükle
       _initializeAppointmentsStream();
 
+      // İlk randevu verilerini yükle
+      await _loadInitialAppointments();
+
       // Diyetisyen kontrolünü yap
       await _checkDietitianAssignment();
     } catch (e) {
@@ -72,6 +75,41 @@ class _CalendarScreenState extends State<CalendarScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  // İlk randevu verilerini yükle
+  Future<void> _loadInitialAppointments() async {
+    if (_appointmentsStream == null) return;
+
+    try {
+      final appointments = await _appointmentsStream!.first;
+      if (mounted) {
+        final now = DateTime.now();
+        final startOfToday = DateTime(now.year, now.month, now.day);
+
+        // Bugün ve sonrasındaki randevuları filtrele ve tarihe göre sırala
+        final filteredAndSortedAppointments = appointments
+            .where((appointment) => appointment.dateTime
+                .isAfter(startOfToday.subtract(Duration(seconds: 1))))
+            .toList()
+          ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+        setState(() {
+          _appointments = filteredAndSortedAppointments;
+          _events = {};
+          for (var appointment in _appointments) {
+            final date = DateTime(
+              appointment.dateTime.year,
+              appointment.dateTime.month,
+              appointment.dateTime.day,
+            );
+            _events[date] = [...(_events[date] ?? []), appointment];
+          }
+        });
+      }
+    } catch (e) {
+      print('İlk randevu yükleme hatası: $e');
     }
   }
 
@@ -111,12 +149,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final now = DateTime.now();
         final startOfToday = DateTime(now.year, now.month, now.day);
 
+        print('Loaded appointments count: ${appointments.length}');
+
         // Bugün ve sonrasındaki randevuları filtrele ve tarihe göre sırala
         final filteredAndSortedAppointments = appointments
             .where((appointment) => appointment.dateTime
                 .isAfter(startOfToday.subtract(Duration(seconds: 1))))
             .toList()
           ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+        print(
+            'Filtered appointments count: ${filteredAndSortedAppointments.length}');
 
         setState(() {
           _appointments = filteredAndSortedAppointments;
@@ -131,6 +174,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           }
         });
       }
+    }, onError: (error) {
+      print('Error loading appointments: $error');
     });
   }
 
@@ -477,15 +522,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             ),
                           );
                         }),
-                  if (_appointments.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        'Randevularım',
-                        style: TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.bold),
-                      ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      'Randevularım',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
+                  ),
+                  if (_isLoading)
+                    Center(child: CircularProgressIndicator())
+                  else if (_appointments.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          'Henüz randevunuz bulunmamaktadır.',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ),
+                    )
+                  else
                     ListView.builder(
                       shrinkWrap: true,
                       physics: NeverScrollableScrollPhysics(),
@@ -495,7 +555,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         return _buildAppointmentCard(appointment);
                       },
                     ),
-                  ],
                   SizedBox(height: 50),
                 ],
               ),

@@ -63,7 +63,6 @@ void main() async {
     );
     print('iOS notification permissions requested');
   }
-
   runApp(MyApp());
 }
 

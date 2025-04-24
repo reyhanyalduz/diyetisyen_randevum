@@ -408,7 +408,10 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('Diyetisyen Seç'),
+          title: Text(
+            'Diyetisyen Seç',
+            textAlign: TextAlign.center,
+          ),
           content: Container(
             width: double.maxFinite,
             height: MediaQuery.of(context).size.height * 0.6,
@@ -419,6 +422,8 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                 final dietitian =
                     AppUser.fromMap(dietitians.docs[index].data()) as Dietitian;
                 return Card(
+                  color: Color.fromARGB(255, 234, 240, 251),
+                  //color: Color(0xFFF4F7FC),
                   elevation: 2,
                   margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                   child: InkWell(
@@ -588,32 +593,39 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
       appBar: AppBar(
         title: Text('Profilim'),
         actions: [
-          if (_selectedDietitian != null && _hasActiveCall)
-            IconButton(
-              icon: Icon(Icons.video_call, color: Colors.red),
-              onPressed: _joinVideoCall,
-              tooltip: 'Video Görüşmesine Katıl',
-            ),
-          IconButton(
-            icon: Icon(Icons.qr_code),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => QRDisplayWidget(
-                    data: _client.uid,
-                    isDietitian: false,
+          Padding(
+            padding: EdgeInsets.only(right: 16.0),
+            child: Row(
+              children: [
+                if (_selectedDietitian != null && _hasActiveCall)
+                  IconButton(
+                    icon: Icon(Icons.video_call, color: Colors.red),
+                    onPressed: _joinVideoCall,
+                    tooltip: 'Video Görüşmesine Katıl',
                   ),
+                IconButton(
+                  icon: Icon(Icons.qr_code),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => QRDisplayWidget(
+                          data: _client.uid,
+                          isDietitian: false,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.exit_to_app),
-            onPressed: () async {
-              await AuthService().signOut();
-              Navigator.pushReplacementNamed(context, '/login');
-            },
+                IconButton(
+                  icon: Icon(Icons.exit_to_app),
+                  onPressed: () async {
+                    await AuthService().signOut();
+                    Navigator.pushReplacementNamed(context, '/login');
+                  },
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -644,7 +656,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
 
             return SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: EdgeInsets.only(top: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -654,26 +666,20 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                       onMeasurementTap: _showMeasurementDialog,
                     ),
                     SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: TagSection(
-                        context: context,
-                        title: 'Alerjiler',
-                        initialTags: _client.allergies,
-                        onTagsUpdated: (tags) =>
-                            _updateClientData('allergies', tags),
-                      ),
+                    TagSection(
+                      context: context,
+                      title: 'Alerjiler',
+                      initialTags: _client.allergies,
+                      onTagsUpdated: (tags) =>
+                          _updateClientData('allergies', tags),
                     ),
                     SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: TagSection(
-                        context: context,
-                        title: 'Hastalıklar',
-                        initialTags: _client.diseases,
-                        onTagsUpdated: (tags) =>
-                            _updateClientData('diseases', tags),
-                      ),
+                    TagSection(
+                      context: context,
+                      title: 'Hastalıklar',
+                      initialTags: _client.diseases,
+                      onTagsUpdated: (tags) =>
+                          _updateClientData('diseases', tags),
                     ),
                     SizedBox(height: 20),
                     DietitianSectionWidget(
