@@ -629,75 +629,77 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
           ),
         ],
       ),
-      body: StreamBuilder<DocumentSnapshot>(
-          stream: _firestore.collection('clients').doc(_client.uid).snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
-            }
-            if (!snapshot.hasData || !snapshot.data!.exists) {
-              return Center(child: Text('No data available'));
-            }
+      body: 
+          StreamBuilder<DocumentSnapshot>(
+              stream:
+                  _firestore.collection('clients').doc(_client.uid).snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || !snapshot.data!.exists) {
+                  return Center(child: Text('No data available'));
+                }
 
-            var clientData = snapshot.data!.data() as Map<String, dynamic>;
+                var clientData = snapshot.data!.data() as Map<String, dynamic>;
 
-            // Update client data only if it has changed
-            if (_client.uid != clientData['uid'] ||
-                _client.height != clientData['height'] ||
-                _client.weight != clientData['weight'] ||
-                _client.dietitianUid != clientData['dietitianUid']) {
-              _client = AppUser.fromMap(clientData) as Client;
-              _heightController.text = _client.height.toString();
-              _weightController.text = _client.weight.toString();
+                // Update client data only if it has changed
+                if (_client.uid != clientData['uid'] ||
+                    _client.height != clientData['height'] ||
+                    _client.weight != clientData['weight'] ||
+                    _client.dietitianUid != clientData['dietitianUid']) {
+                  _client = AppUser.fromMap(clientData) as Client;
+                  _heightController.text = _client.height.toString();
+                  _weightController.text = _client.weight.toString();
 
-              // Load dietitian information when client data changes
-              _loadSelectedDietitian();
-            }
+                  // Load dietitian information when client data changes
+                  _loadSelectedDietitian();
+                }
 
-            return SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.only(top: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ProfileHeaderWidget(client: _client),
-                    MeasurementsSectionWidget(
-                      client: _client,
-                      onMeasurementTap: _showMeasurementDialog,
+                return SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ProfileHeaderWidget(client: _client),
+                        MeasurementsSectionWidget(
+                          client: _client,
+                          onMeasurementTap: _showMeasurementDialog,
+                        ),
+                        SizedBox(height: 20),
+                        TagSection(
+                          context: context,
+                          title: 'Alerjiler',
+                          initialTags: _client.allergies,
+                          onTagsUpdated: (tags) =>
+                              _updateClientData('allergies', tags),
+                        ),
+                        SizedBox(height: 16),
+                        TagSection(
+                          context: context,
+                          title: 'Hastalıklar',
+                          initialTags: _client.diseases,
+                          onTagsUpdated: (tags) =>
+                              _updateClientData('diseases', tags),
+                        ),
+                        SizedBox(height: 20),
+                        DietitianSectionWidget(
+                          selectedDietitian: _selectedDietitian,
+                          onQrScan: _scanQrCode,
+                          onChangeDietitian: _changeDietitian,
+                        ),
+                        SizedBox(height: 20),
+                        DietPlanWidget(
+                          clientId: _client.uid,
+                          isProfileView: true,
+                        ),
+                      ],
                     ),
-                    SizedBox(height: 20),
-                    TagSection(
-                      context: context,
-                      title: 'Alerjiler',
-                      initialTags: _client.allergies,
-                      onTagsUpdated: (tags) =>
-                          _updateClientData('allergies', tags),
-                    ),
-                    SizedBox(height: 16),
-                    TagSection(
-                      context: context,
-                      title: 'Hastalıklar',
-                      initialTags: _client.diseases,
-                      onTagsUpdated: (tags) =>
-                          _updateClientData('diseases', tags),
-                    ),
-                    SizedBox(height: 20),
-                    DietitianSectionWidget(
-                      selectedDietitian: _selectedDietitian,
-                      onQrScan: _scanQrCode,
-                      onChangeDietitian: _changeDietitian,
-                    ),
-                    SizedBox(height: 20),
-                    DietPlanWidget(
-                      clientId: _client.uid,
-                      isProfileView: true,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
-    );
+                  ),
+                );
+              }));
+       
   }
 
   void _scanQrCode() async {

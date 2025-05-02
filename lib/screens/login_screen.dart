@@ -51,30 +51,42 @@ class _LoginPageState extends State<LoginPage> {
     bool isKeyboardOpen = keyboardHeight > 0;
 
     return Scaffold(
-      backgroundColor: Color(0xFFF4F7FC),
+      //backgroundColor: Color(0xFFF4F7FC),
       resizeToAvoidBottomInset: true, // Klavye açıldığında kaymayı sağlar
       body: SafeArea(
         child: Column(
           children: [
-            if (!isKeyboardOpen) SizedBox(height: 40), // Klavye açıksa gizle
+            if (!isKeyboardOpen) SizedBox(height: 70), // Klavye açıksa gizle
 
             Container(
               //height: screenHeight * 0.23,
-              color: Color(0xFFF4F7FC),
-              height:
-                  isKeyboardOpen ? screenHeight * 0.20 : screenHeight * 0.27,
+              //color: Color(0xFFF4F7FC),
+
+              height: isKeyboardOpen ? screenHeight * 0.20 : screenHeight * 0.3,
               child: Center(
                 child: Padding(
                   padding: EdgeInsets.all(1),
                   child: Image.asset(
-                    'assets/images/newlogo2.png',
+                    'assets/images/logo3.png',
                   ),
                 ),
               ),
             ),
-            if (!isKeyboardOpen)Column(
-                        //mainAxisSize: MainAxisSize.min,  (height: 185),
-                        children: [SizedBox(height: 80), Text("Diyetisyen Randevum",style: TextStyle(color: AppColors.color1,fontSize: 30,fontWeight: FontWeight.bold),),SizedBox(height: 85),],),
+            if (!isKeyboardOpen)
+              Column(
+                //mainAxisSize: MainAxisSize.min,  (height: 185),
+                children: [
+                  //SizedBox(height: 80),
+                  Text(
+                    "Kalorify",
+                    style: TextStyle(
+                        color: AppColors.color1,
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 110),
+                ],
+              ),
             Expanded(
               child: Container(
                 padding: EdgeInsets.all(16),
@@ -98,20 +110,7 @@ class _LoginPageState extends State<LoginPage> {
                                 SizedBox(height: isKeyboardOpen ? 20 : 20),
                                 Row(
                                   children: [
-                                    Container(
-                                      width: 75,
-                                      child: Padding(
-                                        padding: EdgeInsets.only(left: 20),
-                                        child: Text(
-                                          'E-mail',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                          textAlign: TextAlign.left,
-                                        ),
-                                      ),
-                                    ),
+                                    SizedBox(width: 20),
                                     Expanded(
                                       child: TextFormField(
                                         controller: _emailController,
@@ -145,20 +144,7 @@ class _LoginPageState extends State<LoginPage> {
                                 SizedBox(height: isKeyboardOpen ? 20 : 20),
                                 Row(
                                   children: [
-                                    Container(
-                                      width: 75,
-                                      child: Padding(
-                                        padding: EdgeInsets.only(left: 20),
-                                        child: Text(
-                                          'Şifre',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                          textAlign: TextAlign.left,
-                                        ),
-                                      ),
-                                    ),
+                                    SizedBox(width: 20),
                                     Expanded(
                                       child: TextFormField(
                                         controller: _passwordController,
@@ -199,39 +185,29 @@ class _LoginPageState extends State<LoginPage> {
                                   ],
                                 ),
                                 SizedBox(height: isKeyboardOpen ? 20 : 20),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: [
-                                    SizedBox(width: 136),
-                                    ElevatedButton(
-                                      onPressed: _login,
-                                      child: Text("Giriş Yap"),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.white,
-                                        foregroundColor: AppColors.color1,
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 40, vertical: 12),
-                                        textStyle: TextStyle(fontSize: 16),
-                                      ),
+                                Center(
+                                  child: ElevatedButton(
+                                    onPressed: _login,
+                                    child: Text("Giriş Yap"),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.white,
+                                      foregroundColor: AppColors.color1,
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 40, vertical: 12),
+                                      textStyle: TextStyle(fontSize: 16),
                                     ),
-                                  ],
+                                  ),
                                 ),
                                 SizedBox(height: isKeyboardOpen ? 5 : 5),
-                                Row(
-                                  //mainAxisAlignment: MainAxisAlignment.center,
-
-                                  children: [
-                                    SizedBox(width: 100),
-                                    TextButton(
-                                      onPressed: () => Navigator.pushNamed(
-                                          context, '/signup'),
-                                      child:
-                                          Text("Hesabınız yok mu? Kayıt olun"),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.white,
-                                      ),
+                                Center(
+                                  child: TextButton(
+                                    onPressed: () =>
+                                        Navigator.pushNamed(context, '/signup'),
+                                    child: Text("Hesabınız yok mu? Kayıt olun"),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.white,
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ],
                             ),
